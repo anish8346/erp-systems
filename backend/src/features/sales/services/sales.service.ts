@@ -114,6 +114,13 @@ export const cancelSalesOrder = async (id: string, userId?: string) => {
   return updatedSO;
 };
 
-export const getSalesOrders = async () => {
-  return await salesRepository.findAllSalesOrders();
+export const getSalesOrders = async (filters: { 
+  page: number; 
+  limit: number; 
+  searchTerm?: string; 
+  status?: string;
+  startDate?: string;
+  endDate?: string;
+}) => {
+  return await salesRepository.findAllSalesOrders(filters);
 };

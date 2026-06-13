@@ -82,14 +82,63 @@ export class SalesRepository {
     });
   }
 
-  async findAllSalesOrders() {
-    return await prisma.salesOrder.findMany({
-      include: { 
-        orderLines: { include: { product: true } },
-        salesPerson: true
+  async findAllSalesOrders(filters: { 
+    page: number; 
+    limit: number; 
+    searchTerm?: string; 
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+  }) {
+    const { page, limit, searchTerm, status, startDate, endDate } = filters;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    
+    if (searchTerm) {
+      where.OR = [
+        { customerName: { contains: searchTerm, mode: 'insensitive' } },
+        { id: { contains: searchTerm, mode: 'insensitive' } },
+      ];
+    }
+
+    if (status && status !== 'all') {
+      where.status = status;
+    }
+
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) where.createdAt.gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        where.createdAt.lte = end;
+      }
+    }
+
+    const [orders, totalItems] = await Promise.all([
+      prisma.salesOrder.findMany({
+        where,
+        include: { 
+          orderLines: { include: { product: true } },
+          salesPerson: true
+        },
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.salesOrder.count({ where }),
+    ]);
+
+    return {
+      orders,
+      pagination: {
+        page,
+        limit,
+        totalPages: Math.ceil(totalItems / limit),
+        totalItems,
       },
-      orderBy: { createdAt: 'desc' }
-    });
+    };
   }
 
   async deliverOrderTransaction(so: SalesOrder & { orderLines: SalesOrderLine[] }, items: DeliverItem[]) {

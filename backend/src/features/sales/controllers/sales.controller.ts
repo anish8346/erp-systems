@@ -13,9 +13,18 @@ export const createSalesOrder = async (req: AuthRequest, res: Response) => {
 
 export const getSalesOrders = async (req: AuthRequest, res: Response) => {
   try {
-    const orders = await salesService.getSalesOrders();
-    res.json(orders);
+    const filters = {
+      page: parseInt(req.query.page as string) || 1,
+      limit: parseInt(req.query.limit as string) || 20,
+      searchTerm: req.query.searchTerm as string,
+      status: req.query.status as string,
+      startDate: req.query.startDate as string,
+      endDate: req.query.endDate as string,
+    };
+    const result = await salesService.getSalesOrders(filters);
+    res.json(result);
   } catch (error: unknown) {
+    console.error('[GetSalesOrders Error]:', error);
     res.status(500).json({ error: 'Failed to fetch sales orders.' });
   }
 };
