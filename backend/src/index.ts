@@ -2,17 +2,14 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
-// Module Routes
-import productRoutes from './modules/products/productRoutes.js';
-import bomRoutes from './modules/manufacturing/bomRoutes.js';
-import salesRoutes from './modules/sales/salesRoutes.js';
-import purchaseRoutes from './modules/purchase/purchaseRoutes.js';
-import manufacturingRoutes from './modules/manufacturing/manufacturingRoutes.js';
-import authRoutes from './modules/auth/authRoutes.js';
-import configRoutes from './modules/administration/configRoutes.js';
-import requestRoutes from './modules/administration/requestRoutes.js';
-import vendorRoutes from './modules/purchase/vendorRoutes.js';
-import financeRoutes from './modules/finance/financeRoutes.js';
+// Feature Routes
+import { authRouter } from './features/auth/routes/auth.routes.js';
+import { productRouter } from './features/inventory/routes/inventory.routes.js';
+import { bomRouter, manufacturingRouter } from './features/operations/routes/operations.routes.js';
+import { salesRouter } from './features/sales/routes/sales.routes.js';
+import { purchaseRouter, vendorRouter } from './features/procurement/routes/procurement.routes.js';
+import { configRouter, requestRouter } from './features/admin/routes/admin.routes.js';
+import { financeRouter } from './features/analytics/routes/analytics.routes.js';
 
 dotenv.config();
 
@@ -23,16 +20,16 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/boms', bomRoutes);
-app.use('/api/sales', salesRoutes);
-app.use('/api/purchase', purchaseRoutes);
-app.use('/api/manufacturing', manufacturingRoutes);
-app.use('/api/config', configRoutes);
-app.use('/api/requests', requestRoutes);
-app.use('/api/vendors', vendorRoutes);
-app.use('/api/finance', financeRoutes);
+app.use('/api/auth', authRouter);
+app.use('/api/products', productRouter);
+app.use('/api/boms', bomRouter);
+app.use('/api/sales', salesRouter);
+app.use('/api/purchase', purchaseRouter);
+app.use('/api/manufacturing', manufacturingRouter);
+app.use('/api/config', configRouter);
+app.use('/api/requests', requestRouter);
+app.use('/api/vendors', vendorRouter);
+app.use('/api/finance', financeRouter);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });

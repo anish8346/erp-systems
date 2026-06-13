@@ -1,5 +1,5 @@
 
-import prisma from '../config/prisma.js';
+import prisma from '../database/prisma.js';
 
 export const logActivity = async (userId: string, action: string, entityType: string, entityId: string, details: string) => {
   try {
