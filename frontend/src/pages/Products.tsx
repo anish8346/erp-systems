@@ -9,6 +9,7 @@ import axios from 'axios';
 const Products = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [boms, setBoms] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAdjustModal, setShowAdjustModal] = useState(false);
@@ -28,12 +29,14 @@ const Products = () => {
 
   const fetchData = async () => {
     try {
-      const [prodRes, vendRes] = await Promise.all([
+      const [prodRes, vendRes, bomRes] = await Promise.all([
         api.get('/products'),
         api.get('/vendors'),
+        api.get('/manufacturing/boms'),
       ]);
       setProducts(prodRes.data);
       setVendors(vendRes.data);
+      setBoms(bomRes.data);
     } catch (err) {
       console.error("Fetch data failed", err);
     }
@@ -164,23 +167,23 @@ const Products = () => {
                   </td>
                   <td className="px-4 py-5">
                     <div className="flex flex-col gap-1">
-                      <Badge variant={p.procurementType === 'MTO' ? 'warning' : 'success'}>
-                        {p.procurementType}
-                      </Badge>
-                      <span className="text-[10px] font-semibold text-warm-taupe/60 uppercase tracking-wider">via {p.supplyMethod}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-5 text-right">
-                    <p className="font-bold text-luxury-brown">₹{p.salesPrice.toFixed(2)}</p>
-                    <p className="text-[10px] text-warm-taupe/60 font-bold uppercase">Cost: ₹{p.costPrice.toFixed(2)}</p>
-                  </td>
-                  <td className="px-4 py-5">
-                    <div className="flex items-center justify-center gap-4">
-                       <StockStat label="On Hand" value={p.qtyOnHand} color="text-luxury-brown" />
-                       <StockStat label="Reserved" value={p.qtyReserved} color="text-blue-600" />
-                       <StockStat label="Free" value={p.qtyOnHand - p.qtyReserved} color="text-green-600" bold />
-                    </div>
-                  </td>
+                  <Badge variant={p.procurementType === 'MTO' ? 'orange' : 'success'}>
+                    {p.procurementType === 'MTO' ? 'Procure on Demand' : 'Make to Stock'}
+                  </Badge>
+                  <span className="text-[10px] font-semibold text-warm-taupe/60 uppercase tracking-wider">via {p.supplyMethod}</span>
+                </div>
+              </td>
+              <td className="px-4 py-5 text-right">
+                <p className="font-bold text-luxury-brown">₹{p.salesPrice.toFixed(2)}</p>
+                <p className="text-[10px] text-warm-taupe/60 font-bold uppercase">Cost: ₹{p.costPrice.toFixed(2)}</p>
+              </td>
+              <td className="px-4 py-5">
+                <div className="flex items-center justify-center gap-4">
+                   <StockStat label="On Hand" value={p.qtyOnHand} color="text-luxury-brown" />
+                   <StockStat label="Reserved" value={p.qtyReserved} color="text-blue-600" />
+                   <StockStat label="Free to Use" value={p.qtyOnHand - p.qtyReserved} color="text-emerald-600" bold />
+                </div>
+              </td>
                   <td className="px-4 py-5 text-right">
                     <div className="flex justify-end gap-1 transition-opacity">
                       <button 
@@ -246,6 +249,71 @@ const Products = () => {
               required
             />
           </div>
+          
+          <div className="p-4 bg-faded-white rounded-xl border border-soft-cream space-y-4">
+            <div className="flex items-center gap-3">
+                <input 
+                    type="checkbox" 
+                    id="procureOnDemand"
+                    className="w-4 h-4 text-orange-500 rounded focus:ring-orange-500"
+                    checked={newProduct.procurementType === 'MTO'}
+                    onChange={(e) => setNewProduct({
+                        ...newProduct, 
+                        procurementType: e.target.checked ? 'MTO' : 'MTS'
+                    })}
+                />
+                <label htmlFor="procureOnDemand" className="text-sm font-bold text-luxury-brown">Procure on Demand (MTO)</label>
+            </div>
+
+            {newProduct.procurementType === 'MTO' && (
+                <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-200">
+                    <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-gray-500 uppercase ml-1">Supply Method</label>
+                        <select 
+                            className="px-3 py-2 border border-soft-cream rounded-lg focus:ring-2 focus:ring-luxury-brown/10 focus:border-luxury-brown outline-none bg-white text-sm"
+                            value={newProduct.supplyMethod}
+                            onChange={(e) => setNewProduct({...newProduct, supplyMethod: e.target.value as SupplyMethod})}
+                            required
+                        >
+                            <option value="PURCHASE">Purchase</option>
+                            <option value="MANUFACTURE">Manufacture</option>
+                        </select>
+                    </div>
+                    {newProduct.supplyMethod === 'PURCHASE' ? (
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Vendor</label>
+                            <select 
+                                className="px-3 py-2 border border-soft-cream rounded-lg focus:ring-2 focus:ring-luxury-brown/10 focus:border-luxury-brown outline-none bg-white text-sm"
+                                value={newProduct.vendorId}
+                                onChange={(e) => setNewProduct({...newProduct, vendorId: e.target.value})}
+                                required
+                            >
+                                <option value="">Select Vendor...</option>
+                                {vendors.map(v => (
+                                    <option key={v.id} value={v.id}>{v.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase ml-1">BoM</label>
+                            <select 
+                                className="px-3 py-2 border border-soft-cream rounded-lg focus:ring-2 focus:ring-luxury-brown/10 focus:border-luxury-brown outline-none bg-white text-sm"
+                                value={newProduct.bomId || ''}
+                                onChange={(e) => setNewProduct({...newProduct, bomId: e.target.value})}
+                                required
+                            >
+                                <option value="">Select BoM...</option>
+                                {boms.map(b => (
+                                    <option key={b.id} value={b.id}>{b.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                </div>
+            )}
+          </div>
+
           <Input 
             label="Initial Stock Quantity" 
             type="number"
@@ -253,45 +321,7 @@ const Products = () => {
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewProduct({...newProduct, qtyOnHand: Number(e.target.value)})}
             required
           />
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-semibold text-gray-700">Procurement Strategy</label>
-              <select 
-                className="px-3 py-2 border border-soft-cream rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none"
-                value={newProduct.procurementType}
-                onChange={(e) => setNewProduct({...newProduct, procurementType: e.target.value as ProcurementType})}
-              >
-                <option value="MTS">Make To Stock (MTS)</option>
-                <option value="MTO">Make To Order (MTO)</option>
-              </select>
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-semibold text-gray-700">Supply Method</label>
-              <select 
-                className="px-3 py-2 border border-soft-cream rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none"
-                value={newProduct.supplyMethod}
-                onChange={(e) => setNewProduct({...newProduct, supplyMethod: e.target.value as SupplyMethod})}
-              >
-                <option value="PURCHASE">Purchase from Vendor</option>
-                <option value="MANUFACTURE">Manufacture In-House</option>
-              </select>
-            </div>
-          </div>
-          {newProduct.supplyMethod === 'PURCHASE' && (
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-semibold text-gray-700">Preferred Vendor</label>
-              <select 
-                className="px-3 py-2 border border-soft-cream rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none"
-                value={newProduct.vendorId}
-                onChange={(e) => setNewProduct({...newProduct, vendorId: e.target.value})}
-              >
-                <option value="">Select a vendor...</option>
-                {vendors.map(v => (
-                  <option key={v.id} value={v.id}>{v.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
+
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button variant="secondary" type="button" onClick={() => setShowModal(false)}>Cancel</Button>
             <Button type="submit">Create Product</Button>
@@ -327,45 +357,70 @@ const Products = () => {
                 required
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-semibold text-gray-700">Procurement Strategy</label>
-                <select 
-                  className="px-3 py-2 border border-soft-cream rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none"
-                  value={editingProduct.procurementType}
-                  onChange={(e) => setEditingProduct({...editingProduct, procurementType: e.target.value as ProcurementType})}
-                >
-                  <option value="MTS">Make To Stock (MTS)</option>
-                  <option value="MTO">Make To Order (MTO)</option>
-                </select>
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-semibold text-gray-700">Supply Method</label>
-                <select 
-                  className="px-3 py-2 border border-soft-cream rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none"
-                  value={editingProduct.supplyMethod}
-                  onChange={(e) => setEditingProduct({...editingProduct, supplyMethod: e.target.value as SupplyMethod})}
-                >
-                  <option value="PURCHASE">Purchase from Vendor</option>
-                  <option value="MANUFACTURE">Manufacture In-House</option>
-                </select>
-              </div>
+
+            <div className="p-4 bg-faded-white rounded-xl border border-soft-cream space-y-4">
+                <div className="flex items-center gap-3">
+                    <input 
+                        type="checkbox" 
+                        id="editProcureOnDemand"
+                        className="w-4 h-4 text-orange-500 rounded focus:ring-orange-500"
+                        checked={editingProduct.procurementType === 'MTO'}
+                        onChange={(e) => setEditingProduct({
+                            ...editingProduct, 
+                            procurementType: e.target.checked ? 'MTO' : 'MTS'
+                        })}
+                    />
+                    <label htmlFor="editProcureOnDemand" className="text-sm font-bold text-luxury-brown">Procure on Demand (MTO)</label>
+                </div>
+
+                {editingProduct.procurementType === 'MTO' && (
+                    <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-200">
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Supply Method</label>
+                            <select 
+                                className="px-3 py-2 border border-soft-cream rounded-lg focus:ring-2 focus:ring-luxury-brown/10 focus:border-luxury-brown outline-none bg-white text-sm"
+                                value={editingProduct.supplyMethod}
+                                onChange={(e) => setEditingProduct({...editingProduct, supplyMethod: e.target.value as SupplyMethod})}
+                                required
+                            >
+                                <option value="PURCHASE">Purchase</option>
+                                <option value="MANUFACTURE">Manufacture</option>
+                            </select>
+                        </div>
+                        {editingProduct.supplyMethod === 'PURCHASE' ? (
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs font-bold text-gray-500 uppercase ml-1">Vendor</label>
+                                <select 
+                                    className="px-3 py-2 border border-soft-cream rounded-lg focus:ring-2 focus:ring-luxury-brown/10 focus:border-luxury-brown outline-none bg-white text-sm"
+                                    value={editingProduct.vendorId || ''}
+                                    onChange={(e) => setEditingProduct({...editingProduct, vendorId: e.target.value})}
+                                    required
+                                >
+                                    <option value="">Select Vendor...</option>
+                                    {vendors.map(v => (
+                                        <option key={v.id} value={v.id}>{v.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs font-bold text-gray-500 uppercase ml-1">BoM</label>
+                                <select 
+                                    className="px-3 py-2 border border-soft-cream rounded-lg focus:ring-2 focus:ring-luxury-brown/10 focus:border-luxury-brown outline-none bg-white text-sm"
+                                    value={editingProduct.bomId || ''}
+                                    onChange={(e) => setEditingProduct({...editingProduct, bomId: e.target.value})}
+                                    required
+                                >
+                                    <option value="">Select BoM...</option>
+                                    {boms.map(b => (
+                                        <option key={b.id} value={b.id}>{b.name}</option>
+                                    ))}                                </select>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
-            {editingProduct.supplyMethod === 'PURCHASE' && (
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-semibold text-gray-700">Preferred Vendor</label>
-                <select 
-                  className="px-3 py-2 border border-soft-cream rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none"
-                  value={editingProduct.vendorId || ''}
-                  onChange={(e) => setEditingProduct({...editingProduct, vendorId: e.target.value})}
-                >
-                  <option value="">Select a vendor...</option>
-                  {vendors.map(v => (
-                    <option key={v.id} value={v.id}>{v.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+
             <div className="flex justify-end gap-3 pt-4 border-t">
               <Button variant="secondary" type="button" onClick={() => setShowEditModal(false)}>Cancel</Button>
               <Button type="submit">Update Changes</Button>

@@ -60,9 +60,25 @@ export class SalesRepository {
   }
 
   async cancelSalesOrder(id: string) {
-    return await prisma.salesOrder.update({
-      where: { id },
-      data: { status: 'CANCELLED' },
+    const so = await this.findSalesOrderById(id);
+    if (!so) throw new Error('Sales Order not found.');
+
+    return await prisma.$transaction(async (tx) => {
+      // Release reservations
+      for (const line of (so.orderLines || [])) {
+        const remainingToDeliver = line.quantity - line.deliveredQty;
+        if (remainingToDeliver > 0) {
+          await tx.product.update({
+            where: { id: line.productId },
+            data: { qtyReserved: { decrement: remainingToDeliver } }
+          });
+        }
+      }
+
+      return await tx.salesOrder.update({
+        where: { id },
+        data: { status: 'CANCELLED' },
+      });
     });
   }
 

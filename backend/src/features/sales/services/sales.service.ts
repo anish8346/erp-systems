@@ -34,39 +34,44 @@ export const confirmSalesOrder = async (id: string, userId?: string) => {
   for (const line of (so.orderLines || [])) {
     const product = line.product;
     if (!product) continue;
-    const freeToUse = product.qtyOnHand - product.qtyReserved;
     
-    if (freeToUse >= line.quantity) {
-      await salesRepository.updateProductReservedQty(product.id, line.quantity);
-    } else {
-      const shortage = line.quantity - freeToUse;
-      
-      if (freeToUse > 0) {
-         await salesRepository.updateProductReservedQty(product.id, freeToUse);
-      }
+    const freeToUse = product.qtyOnHand - product.qtyReserved;
+    const qtyToReserve = Math.min(line.quantity, Math.max(0, freeToUse));
+    const shortage = line.quantity - qtyToReserve;
+    
+    // 1. Reserve what is available
+    if (qtyToReserve > 0) {
+      await salesRepository.updateProductReservedQty(product.id, qtyToReserve);
+    }
 
-      if (product.procurementType === 'MTO') {
-        if (product.supplyMethod === 'MANUFACTURE' && product.bomId) {
-          await salesRepository.createManufacturingOrder({
-            productId: product.id,
-            quantity: shortage,
-            status: 'CONFIRMED',
-            bomId: product.bomId,
-          });
-        } else if (product.supplyMethod === 'PURCHASE') {
-          await salesRepository.createPurchaseOrder({
-            vendorName: 'Auto-Generated Vendor',
-            status: 'DRAFT',
-            totalAmount: shortage * product.costPrice,
-            orderLines: {
-              create: [{
-                productId: product.id,
-                quantity: shortage,
-                price: product.costPrice,
-              }]
-            }
-          });
-        }
+    // 2. Trigger MTO if needed
+    if (shortage > 0 && product.procurementType === 'MTO') {
+      if (product.supplyMethod === 'MANUFACTURE' && product.bomId) {
+        await salesRepository.createManufacturingOrder({
+          productId: product.id,
+          quantity: shortage,
+          status: 'CONFIRMED',
+          bomId: product.bomId,
+        });
+      } else if (product.supplyMethod === 'PURCHASE' && product.vendorId) {
+        // Fetch vendor for details
+        const vendor = await prisma.vendor.findUnique({ where: { id: product.vendorId } });
+        
+        await salesRepository.createPurchaseOrder({
+          vendorId: product.vendorId,
+          vendorName: vendor?.name || 'Auto-Generated Vendor',
+          vendorAddress: vendor?.address || '',
+          status: 'DRAFT',
+          totalAmount: shortage * product.costPrice,
+          orderLines: {
+            create: [{
+              productId: product.id,
+              quantity: shortage,
+              price: product.costPrice,
+              initialPrice: product.costPrice
+            }]
+          }
+        });
       }
     }
   }

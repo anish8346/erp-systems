@@ -104,7 +104,7 @@ export interface DeliverItem {
   quantity: number;
 }
 
-export type PurchaseOrderStatus = 'DRAFT' | 'CONFIRMED' | 'PARTIALLY_RECEIVED' | 'RECEIVED';
+export type PurchaseOrderStatus = 'DRAFT' | 'CONFIRMED' | 'PARTIALLY_RECEIVED' | 'RECEIVED' | 'FULLY_RECEIVED' | 'CANCELLED' | 'NEGOTIATION';
 
 export interface PurchaseOrderLine {
   id: string;
@@ -113,6 +113,7 @@ export interface PurchaseOrderLine {
   quantity: number;
   receivedQty: number;
   price: number;
+  initialPrice: number;
   product?: Product;
 }
 
@@ -120,12 +121,32 @@ export interface PurchaseOrder {
   id: string;
   vendorId?: string | null;
   vendorName: string;
+  vendorAddress?: string | null;
+  responsiblePersonId?: string | null;
   status: PurchaseOrderStatus;
   totalAmount: number;
   createdAt: Date;
   updatedAt: Date;
   orderLines?: PurchaseOrderLine[];
   vendor?: Vendor | null;
+  responsiblePerson?: User | null;
+}
+
+export interface CreatePOData {
+  vendorId?: string | null;
+  vendorName: string;
+  vendorAddress?: string | null;
+  responsiblePersonId?: string | null;
+  status: PurchaseOrderStatus;
+  totalAmount: number;
+  orderLines: {
+    create: {
+      productId: string;
+      quantity: number;
+      price: number;
+      initialPrice: number;
+    }[];
+  };
 }
 
 export interface BoMLine {
@@ -181,8 +202,12 @@ export interface CreateMOData {
   status: MOStatus;
   bomId: string;
   assigneeId?: string;
-  components?: MOComponentData[];
-  workOrders?: MOWorkOrderData[];
+  components?: {
+    create: MOComponentData[];
+  };
+  workOrders?: {
+    create: MOWorkOrderData[];
+  };
 }
 
 export interface ManufacturingOrder {
@@ -208,6 +233,16 @@ export interface MOComponent {
   toConsume: number;
   consumed: number;
   product?: Product;
+}
+
+export interface SalesOrderLine {
+    id: string;
+    salesOrderId: string;
+    productId: string;
+    quantity: number;
+    deliveredQty: number;
+    price: number;
+    product?: Product;
 }
 
 export type WOStatus = 'PENDING' | 'IN_PROGRESS' | 'DONE';

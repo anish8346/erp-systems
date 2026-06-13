@@ -35,13 +35,27 @@ export class OperationsService {
     if (!mo) throw new Error('MO not found.');
     if (mo.status !== 'DRAFT') throw new Error('Only DRAFT MOs can be confirmed.');
 
-    const updated = await OperationsRepository.updateMOStatus(id, 'CONFIRMED');
+    await prisma.$transaction(async (tx) => {
+      // Reserve components
+      for (const comp of (mo.components || [])) {
+        await tx.product.update({
+          where: { id: comp.productId },
+          data: { qtyReserved: { increment: comp.toConsume } }
+        });
+      }
+
+      await tx.manufacturingOrder.update({
+        where: { id },
+        data: { status: 'CONFIRMED' }
+      });
+    });
 
     if (userId) {
-      await logActivity(userId, 'CONFIRM', 'MANUFACTURING_ORDER', id, `Confirmed MO for ${mo.product.name}`);
+      const updatedMo = await OperationsRepository.findMOById(id);
+      await logActivity(userId, 'CONFIRM', 'MANUFACTURING_ORDER', id, `Confirmed MO for ${updatedMo?.product.name}`);
     }
 
-    return updated;
+    return await OperationsRepository.findMOById(id);
   }
 
   static async produceMO(id: string, userId?: string) {
@@ -55,7 +69,10 @@ export class OperationsService {
         const consumedQty = comp.consumed || comp.toConsume; // Use entered consumed or fallback to planned
         await tx.product.update({
           where: { id: comp.productId },
-          data: { qtyOnHand: { decrement: consumedQty } }
+          data: { 
+            qtyOnHand: { decrement: consumedQty },
+            qtyReserved: { decrement: comp.toConsume } // Use planned toConsume for reservation release
+          }
         });
 
         await tx.stockLedger.create({
