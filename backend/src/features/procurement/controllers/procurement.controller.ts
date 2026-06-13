@@ -26,6 +26,47 @@ export class ProcurementController {
     }
   }
 
+  static async startNegotiation(req: AuthRequest, res: Response) {
+    try {
+      const id = req.params.id as string;
+      const po = await ProcurementService.startNegotiation(id, req.user?.id);
+      res.json(po);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to start negotiation.';
+      console.error('[StartNegotiation Error]:', error);
+      res.status(500).json({ error: message });
+    }
+  }
+
+  static async addComment(req: AuthRequest, res: Response) {
+    try {
+      const id = req.params.id as string;
+      const { text } = req.body;
+      if (!req.user?.id) throw new Error('User not authenticated.');
+      const comment = await ProcurementService.addNegotiationComment(id, text, req.user.id);
+      res.status(201).json(comment);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to add comment.';
+      console.error('[AddComment Error]:', error);
+      res.status(500).json({ error: message });
+    }
+  }
+
+  static async updateLinePrice(req: AuthRequest, res: Response) {
+    try {
+      const id = req.params.id as string;
+      const lineId = req.params.lineId as string;
+      const { price } = req.body;
+      if (!req.user?.id) throw new Error('User not authenticated.');
+      const po = await ProcurementService.updateNegotiatedPrice(id, lineId, Number(price), req.user.id);
+      res.json(po);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to update price.';
+      console.error('[UpdatePrice Error]:', error);
+      res.status(500).json({ error: message });
+    }
+  }
+
   static async cancelPurchaseOrder(req: AuthRequest, res: Response) {
     try {
       const id = req.params.id as string;

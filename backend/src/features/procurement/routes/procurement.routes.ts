@@ -6,6 +6,9 @@ export const purchaseRouter = Router();
 purchaseRouter.post('/', authenticate, ProcurementController.createPurchaseOrder);
 purchaseRouter.get('/', ProcurementController.getPurchaseOrders);
 purchaseRouter.post('/:id/confirm', authenticate, ProcurementController.confirmPurchaseOrder);
+purchaseRouter.post('/:id/negotiate', authenticate, ProcurementController.startNegotiation);
+purchaseRouter.post('/:id/comment', authenticate, ProcurementController.addComment);
+purchaseRouter.patch('/:id/line/:lineId', authenticate, ProcurementController.updateLinePrice);
 purchaseRouter.post('/:id/cancel', authenticate, ProcurementController.cancelPurchaseOrder);
 purchaseRouter.post('/:id/receive', authenticate, ProcurementController.receivePurchaseOrder);
 

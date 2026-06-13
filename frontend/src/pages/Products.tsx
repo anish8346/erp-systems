@@ -182,7 +182,7 @@ const Products = () => {
                     </div>
                   </td>
                   <td className="px-4 py-5 text-right">
-                    <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex justify-end gap-1 transition-opacity">
                       <button 
                         title="Adjust Stock"
                         onClick={() => { setAdjustData({ id: p.id, name: p.name, adjustment: 0, reason: '' }); setShowAdjustModal(true); }}
@@ -204,9 +204,6 @@ const Products = () => {
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
-                    </div>
-                    <div className="group-hover:hidden">
-                       <MoreVertical className="w-5 h-5 text-gray-300 ml-auto" />
                     </div>
                   </td>
                 </tr>

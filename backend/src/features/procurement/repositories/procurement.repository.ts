@@ -33,6 +33,7 @@ export class ProcurementRepository {
             productId: line.productId,
             quantity: Number(line.quantity),
             price: Number(line.price),
+            initialPrice: Number(line.price),
           })),
         },
       },
@@ -43,7 +44,12 @@ export class ProcurementRepository {
   static async findPurchaseOrderById(id: string) {
     return await prisma.purchaseOrder.findUnique({
       where: { id },
-      include: { orderLines: { include: { product: true } }, vendor: true, responsiblePerson: true },
+      include: { 
+        orderLines: { include: { product: true } }, 
+        vendor: true, 
+        responsiblePerson: true,
+        comments: { include: { user: true }, orderBy: { createdAt: 'asc' } }
+      },
     });
   }
 
@@ -52,9 +58,24 @@ export class ProcurementRepository {
       include: { 
         orderLines: { include: { product: true } },
         vendor: true,
-        responsiblePerson: true
+        responsiblePerson: true,
+        comments: { include: { user: true } }
       },
       orderBy: { createdAt: 'desc' }
+    });
+  }
+
+  static async addComment(data: { purchaseOrderId: string, userId: string, text: string }) {
+    return await prisma.purchaseOrderComment.create({
+      data,
+      include: { user: true }
+    });
+  }
+
+  static async updatePurchaseOrderLine(id: string, data: { price?: number, quantity?: number }) {
+    return await prisma.purchaseOrderLine.update({
+      where: { id },
+      data
     });
   }
 

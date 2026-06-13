@@ -40,15 +40,80 @@ export class ProcurementService {
   static async confirmPurchaseOrder(id: string, userId?: string) {
     const po = await ProcurementRepository.findPurchaseOrderById(id);
     if (!po) throw new Error('Purchase Order not found.');
-    if (po.status !== 'DRAFT') throw new Error('Only DRAFT orders can be confirmed.');
+    if (po.status !== 'DRAFT' && po.status !== 'NEGOTIATION') throw new Error('Only DRAFT or NEGOTIATION orders can be confirmed.');
 
-    const updatedPo = await ProcurementRepository.updatePurchaseOrder(id, { status: 'CONFIRMED' });
+    await ProcurementRepository.updatePurchaseOrder(id, { status: 'CONFIRMED' });
 
     if (userId) {
       await logActivity(userId, 'CONFIRM', 'PURCHASE_ORDER', id, `Confirmed procurement order ${id}`);
     }
 
-    return updatedPo;
+    return ProcurementRepository.findPurchaseOrderById(id);
+  }
+
+  static async startNegotiation(id: string, userId?: string) {
+    const po = await ProcurementRepository.findPurchaseOrderById(id);
+    if (!po) throw new Error('Purchase Order not found.');
+    if (po.status !== 'DRAFT') throw new Error('Only DRAFT orders can be moved to negotiation.');
+
+    await ProcurementRepository.updatePurchaseOrder(id, { status: 'NEGOTIATION' });
+
+    if (userId) {
+      await logActivity(userId, 'START_NEGOTIATION', 'PURCHASE_ORDER', id, `Started negotiation for procurement order ${id}`);
+    }
+
+    return ProcurementRepository.findPurchaseOrderById(id);
+  }
+
+  static async addNegotiationComment(id: string, text: string, userId: string) {
+    const po = await ProcurementRepository.findPurchaseOrderById(id);
+    if (!po) throw new Error('Purchase Order not found.');
+
+    await ProcurementRepository.addComment({ purchaseOrderId: id, userId, text });
+
+    await logActivity(userId, 'COMMENT', 'PURCHASE_ORDER', id, `Added negotiation comment: ${text.substring(0, 50)}...`);
+
+    return ProcurementRepository.findPurchaseOrderById(id);
+  }
+
+  static async updateNegotiatedPrice(id: string, lineId: string, newPrice: number, userId: string) {
+    const po = await ProcurementRepository.findPurchaseOrderById(id);
+    if (!po) throw new Error('Purchase Order not found.');
+    if (po.status !== 'NEGOTIATION' && po.status !== 'DRAFT') throw new Error('Can only update price in DRAFT or NEGOTIATION status.');
+
+    return await prisma.$transaction(async (tx) => {
+      const line = await tx.purchaseOrderLine.findUnique({ where: { id: lineId } });
+      if (!line || line.purchaseOrderId !== id) throw new Error('Order line not found.');
+
+      await tx.purchaseOrderLine.update({
+        where: { id: lineId },
+        data: { price: newPrice }
+      });
+
+      // Recalculate total amount from all lines
+      const allLines = await tx.purchaseOrderLine.findMany({
+        where: { purchaseOrderId: id }
+      });
+      
+      const totalAmount = allLines.reduce((acc, l) => acc + (l.quantity * l.price), 0);
+
+      await tx.purchaseOrder.update({
+        where: { id },
+        data: { totalAmount }
+      });
+
+      await logActivity(userId, 'UPDATE_PRICE', 'PURCHASE_ORDER', id, `Updated price for ${line.productId} to ₹${newPrice}`);
+
+      return await tx.purchaseOrder.findUnique({
+        where: { id },
+        include: { 
+          orderLines: { include: { product: true } }, 
+          vendor: true, 
+          responsiblePerson: true,
+          comments: { include: { user: true }, orderBy: { createdAt: 'asc' } }
+        }
+      });
+    });
   }
 
   static async cancelPurchaseOrder(id: string, userId?: string) {
@@ -111,9 +176,19 @@ export class ProcurementService {
         }
       }
 
+      const updatedPoData = await tx.purchaseOrder.findUnique({
+        where: { id },
+        include: { orderLines: true }
+      });
+
+      const totalAmount = updatedPoData?.orderLines.reduce((acc, l) => acc + (l.receivedQty * l.price), 0) || 0;
+
       await tx.purchaseOrder.update({
         where: { id },
-        data: { status: allReceived ? 'FULLY_RECEIVED' : 'PARTIALLY_RECEIVED' },
+        data: { 
+          status: allReceived ? 'FULLY_RECEIVED' : 'PARTIALLY_RECEIVED',
+          totalAmount
+        },
       });
     });
 

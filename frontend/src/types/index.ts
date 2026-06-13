@@ -59,7 +59,7 @@ export interface SalesOrder {
   salesPerson?: User | null;
 }
 
-export type PurchaseOrderStatus = 'DRAFT' | 'CONFIRMED' | 'PARTIALLY_RECEIVED' | 'FULLY_RECEIVED' | 'CANCELLED';
+export type PurchaseOrderStatus = 'DRAFT' | 'NEGOTIATION' | 'CONFIRMED' | 'PARTIALLY_RECEIVED' | 'FULLY_RECEIVED' | 'CANCELLED';
 
 export interface PurchaseOrderLine {
   id: string;
@@ -68,7 +68,17 @@ export interface PurchaseOrderLine {
   quantity: number;
   receivedQty: number;
   price: number;
+  initialPrice: number;
   product?: Product;
+}
+
+export interface PurchaseOrderComment {
+  id: string;
+  purchaseOrderId: string;
+  userId: string;
+  text: string;
+  createdAt: string;
+  user?: User;
 }
 
 export interface PurchaseOrder {
@@ -82,6 +92,7 @@ export interface PurchaseOrder {
   createdAt: string;
   updatedAt: string;
   orderLines: PurchaseOrderLine[];
+  comments?: PurchaseOrderComment[];
   vendor?: Vendor | null;
   responsiblePerson?: User | null;
 }

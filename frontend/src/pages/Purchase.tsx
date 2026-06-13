@@ -2,12 +2,16 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import api from '../services/api';
-import { Plus, Download, Truck, ShoppingCart, Package, Search, Clock, ArrowLeft, CheckCircle, XCircle, User as UserIcon, MapPin, Trash2 } from 'lucide-react';
+import { 
+  Plus, Download, Truck, ShoppingCart, Package, Search, Clock, 
+  ArrowLeft, CheckCircle, XCircle, User as UserIcon, MapPin, Trash2, 
+  MessageSquare, Edit3, Save, TrendingDown, History 
+} from 'lucide-react';
 import { Button, Card, Badge, Modal, Input } from '../components/UI';
-import type { PurchaseOrder, Product, Vendor, PurchaseOrderLine, User } from '../types';
+import type { PurchaseOrder, Product, Vendor, PurchaseOrderLine, User, PurchaseOrderComment } from '../types';
 
 const Purchase = () => {
-  const [view, setView] = useState<'list' | 'form'>('list');
+  const [view, setView] = useState<'list' | 'form' | 'negotiation'>('list');
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -16,6 +20,12 @@ const Purchase = () => {
   const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
   const [receiveQtys, setReceiveQtys] = useState<Record<string, number>>({});
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Negotiation states
+  const [negotiationOrder, setNegotiationOrder] = useState<PurchaseOrder | null>(null);
+  const [newComment, setNewComment] = useState('');
+  const [editingPriceLineId, setEditingPriceLineId] = useState<string | null>(null);
+  const [tempPrice, setTempPrice] = useState<number>(0);
 
   const [newOrder, setNewOrder] = useState({
     vendorId: '',
@@ -36,6 +46,12 @@ const Purchase = () => {
       setProducts(productsRes.data);
       setVendors(vendorsRes.data);
       setUsers(usersRes.data);
+      
+      // Update negotiation order if it exists
+      if (negotiationOrder) {
+          const updated = (ordersRes.data as PurchaseOrder[]).find(o => o.id === negotiationOrder.id);
+          if (updated) setNegotiationOrder(updated);
+      }
     } catch (err) {
       console.error("Fetch data failed", err);
     }
@@ -78,16 +94,26 @@ const Purchase = () => {
     setNewOrder({ ...newOrder, orderLines: lines });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, startNegotiation: boolean = false) => {
     e.preventDefault();
     try {
       const vendor = vendors.find(v => v.id === newOrder.vendorId);
       
-      await api.post('/purchase', {
+      const response = await api.post('/purchase', {
         ...newOrder,
         vendorName: vendor?.name || 'Unknown',
       });
-      setView('list');
+
+      const createdOrder = response.data;
+
+      if (startNegotiation) {
+          const negotiateRes = await api.post(`/purchase/${createdOrder.id}/negotiate`);
+          setNegotiationOrder(negotiateRes.data);
+          setView('negotiation');
+      } else {
+          setView('list');
+      }
+
       setNewOrder({
         vendorId: '',
         vendorAddress: '',
@@ -107,6 +133,10 @@ const Purchase = () => {
   const handleConfirm = async (id: string) => {
     try {
       await api.post(`/purchase/${id}/confirm`);
+      if (view === 'negotiation') {
+          setView('list');
+          setNegotiationOrder(null);
+      }
       fetchData();
     } catch (err: any) {
       alert(err.response?.data?.error || "Failed to confirm order");
@@ -117,10 +147,55 @@ const Purchase = () => {
     if (!window.confirm("Are you sure you want to cancel this order?")) return;
     try {
       await api.post(`/purchase/${id}/cancel`);
+      if (view === 'negotiation') {
+          setView('list');
+          setNegotiationOrder(null);
+      }
       fetchData();
     } catch (err: any) {
       alert(err.response?.data?.error || "Failed to cancel order");
     }
+  };
+
+  // Negotiation Actions
+  const handleStartNegotiation = async (id: string) => {
+      try {
+          const response = await api.post(`/purchase/${id}/negotiate`);
+          const updatedOrder = response.data;
+          // Set negotiation order first
+          setNegotiationOrder(updatedOrder);
+          // Small timeout to ensure state is processed if needed, though usually not necessary with React 18+ batching
+          // but changing the order helps.
+          setView('negotiation');
+          fetchData(); // Refresh list in background
+      } catch (err: any) {
+          alert(err.response?.data?.error || "Failed to start negotiation");
+      }
+  };
+
+  const handleAddComment = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!negotiationOrder || !newComment.trim()) return;
+      try {
+          const response = await api.post(`/purchase/${negotiationOrder.id}/comment`, { text: newComment });
+          setNegotiationOrder(response.data);
+          setNewComment('');
+          fetchData();
+      } catch (err: any) {
+          alert(err.response?.data?.error || "Failed to add comment");
+      }
+  };
+
+  const handleUpdatePrice = async (lineId: string) => {
+      if (!negotiationOrder) return;
+      try {
+          const response = await api.patch(`/purchase/${negotiationOrder.id}/line/${lineId}`, { price: tempPrice });
+          setNegotiationOrder(response.data);
+          setEditingPriceLineId(null);
+          fetchData();
+      } catch (err: any) {
+          alert(err.response?.data?.error || "Failed to update price");
+      }
   };
 
   const openReceiveModal = (order: PurchaseOrder) => {
@@ -265,9 +340,10 @@ const Purchase = () => {
                     <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">Unit Price</label>
                     <input 
                       type="number"
-                      readOnly
-                      className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 font-semibold"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm bg-white font-semibold"
                       value={line.price}
+                      onChange={(e) => handleLineChange(index, 'price', Number(e.target.value))}
+                      required
                     />
                   </div>
                   <div className="w-32 space-y-1.5">
@@ -294,13 +370,175 @@ const Purchase = () => {
             </div>
           </Card>
 
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" type="button" onClick={() => setView('list')}>Cancel</Button>
-            <Button type="submit" variant="primary">Create Draft PO</Button>
+          <div className="flex justify-between items-center pt-4">
+            <p className="text-xs text-warm-taupe font-medium italic">
+              * Unit prices are fixed during creation and can be negotiated in the "Bargaining" stage.
+            </p>
+            <div className="flex gap-3">
+              <Button variant="secondary" type="button" onClick={() => setView('list')}>Cancel</Button>
+              <Button 
+                type="button" 
+                variant="orange" 
+                onClick={(e) => handleSubmit(e as any, true)}
+              >
+                <TrendingDown className="w-4 h-4 mr-1" /> Create & Start Bargaining
+              </Button>
+              <Button type="submit" variant="primary">Create Draft PO</Button>
+            </div>
           </div>
         </form>
       </div>
     );
+  }
+
+  if (view === 'negotiation' && negotiationOrder) {
+      return (
+          <div className="space-y-6 animate-in slide-in-from-right duration-300">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <button onClick={() => setView('list')} className="p-2 hover:bg-soft-cream rounded-full transition-colors">
+                        <ArrowLeft className="w-6 h-6 text-luxury-brown" />
+                    </button>
+                    <div>
+                        <h2 className="text-3xl font-bold text-luxury-brown">Negotiate Order</h2>
+                        <p className="text-warm-taupe text-sm font-medium">Bargaining for PUR-{negotiationOrder.id.slice(0,8).toUpperCase()} with {negotiationOrder.vendorName}</p>
+                    </div>
+                </div>
+                <div className="flex gap-3">
+                    <Button variant="secondary" onClick={() => handleCancel(negotiationOrder.id)}>Cancel Order</Button>
+                    <Button variant="primary" onClick={() => { handleConfirm(negotiationOrder.id); setView('list'); }}>Confirm & Close</Button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2 space-y-6">
+                      <Card className="p-6">
+                          <h3 className="font-bold text-luxury-brown mb-4 flex items-center gap-2">
+                              <Package className="w-5 h-5" /> Product Pricing
+                          </h3>
+                          <div className="space-y-4">
+                              {negotiationOrder.orderLines.map((line) => (
+                                  <div key={line.id} className="flex flex-col md:flex-row items-center gap-4 p-4 bg-faded-white rounded-xl border border-soft-cream">
+                                      <div className="flex-1">
+                                          <p className="font-bold text-gray-800">{line.product?.name}</p>
+                                          <p className="text-xs text-warm-taupe font-medium">Qty: {line.quantity}</p>
+                                      </div>
+                                      
+                                      <div className="flex items-center gap-6">
+                                          <div className="text-right">
+                                              <p className="text-[10px] font-bold text-gray-500 uppercase">Initial Cost</p>
+                                              <p className="text-sm font-bold text-gray-400 line-through">₹{line.initialPrice.toLocaleString()}</p>
+                                          </div>
+                                          
+                                          <div className="w-32">
+                                              <p className="text-[10px] font-bold text-luxury-brown uppercase mb-1">Negotiated Price</p>
+                                              {editingPriceLineId === line.id ? (
+                                                  <div className="flex gap-1 animate-in zoom-in-95 duration-150">
+                                                      <input 
+                                                        type="number"
+                                                        className="w-full px-2 py-1 border-2 border-orange-500 rounded text-sm font-bold focus:ring-0 outline-none"
+                                                        value={tempPrice}
+                                                        onChange={(e) => setTempPrice(Number(e.target.value))}
+                                                        autoFocus
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') handleUpdatePrice(line.id);
+                                                            if (e.key === 'Escape') setEditingPriceLineId(null);
+                                                        }}
+                                                      />
+                                                      <button 
+                                                        onClick={() => handleUpdatePrice(line.id)} 
+                                                        className="p-1 bg-emerald-500 text-white rounded hover:bg-emerald-600 transition-colors shadow-sm"
+                                                        title="Save Price"
+                                                      >
+                                                          <Save className="w-4 h-4" />
+                                                      </button>
+                                                      <button 
+                                                        onClick={() => setEditingPriceLineId(null)} 
+                                                        className="p-1 bg-gray-200 text-gray-600 rounded hover:bg-gray-300 transition-colors"
+                                                        title="Cancel"
+                                                      >
+                                                          <XCircle className="w-4 h-4" />
+                                                      </button>
+                                                  </div>
+                                              ) : (
+                                                  <div 
+                                                    className="flex items-center justify-between px-3 py-1.5 bg-white border border-soft-cream rounded-lg cursor-pointer hover:border-orange-500 group transition-all"
+                                                    onClick={() => { setEditingPriceLineId(line.id); setTempPrice(line.price); }}
+                                                  >
+                                                      <span className="text-sm font-bold text-luxury-brown">₹{line.price.toLocaleString()}</span>
+                                                      <Edit3 className="w-3 h-3 text-warm-taupe group-hover:text-orange-500" />
+                                                  </div>
+                                              )}
+                                          </div>
+
+                                          <div className="text-right min-w-[80px]">
+                                              <p className="text-[10px] font-bold text-emerald-600 uppercase">Savings</p>
+                                              <p className="text-sm font-bold text-emerald-600 flex items-center justify-end gap-1">
+                                                  <TrendingDown className="w-3 h-3" />
+                                                  ₹{((line.initialPrice - line.price) * line.quantity).toLocaleString()}
+                                              </p>
+                                          </div>
+                                      </div>
+                                  </div>
+                              ))}
+                          </div>
+                          
+                          <div className="mt-6 pt-6 border-t flex justify-between items-center">
+                              <div>
+                                  <p className="text-xs text-warm-taupe font-bold uppercase">Current Total</p>
+                                  <p className="text-2xl font-black text-luxury-brown">₹{negotiationOrder.totalAmount.toLocaleString()}</p>
+                              </div>
+                              <div className="text-right">
+                                  <p className="text-xs text-emerald-600 font-bold uppercase">Total Potential Savings</p>
+                                  <p className="text-lg font-bold text-emerald-600">
+                                      -₹{negotiationOrder.orderLines.reduce((acc, l) => acc + (l.initialPrice - l.price) * l.quantity, 0).toLocaleString()}
+                                  </p>
+                              </div>
+                          </div>
+                      </Card>
+                  </div>
+
+                  <div className="space-y-6">
+                      <Card className="p-6 h-full flex flex-col">
+                          <h3 className="font-bold text-luxury-brown mb-4 flex items-center gap-2">
+                              <MessageSquare className="w-5 h-5" /> Negotiation Log
+                          </h3>
+                          
+                          <div className="flex-1 overflow-y-auto space-y-4 mb-4 max-h-[400px] pr-2 custom-scrollbar">
+                              {negotiationOrder.comments?.map((comment: PurchaseOrderComment) => (
+                                  <div key={comment.id} className="bg-faded-white p-3 rounded-xl border border-soft-cream">
+                                      <div className="flex justify-between items-center mb-1">
+                                          <span className="text-[10px] font-bold text-luxury-brown">{comment.user?.name}</span>
+                                          <span className="text-[10px] text-warm-taupe">{new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                      </div>
+                                      <p className="text-xs text-gray-700 leading-relaxed font-medium">{comment.text}</p>
+                                  </div>
+                              ))}
+                              {(!negotiationOrder.comments || negotiationOrder.comments.length === 0) && (
+                                  <div className="text-center py-10">
+                                      <History className="w-8 h-8 text-soft-cream mx-auto mb-2" />
+                                      <p className="text-[10px] text-warm-taupe font-bold uppercase">No comments yet</p>
+                                  </div>
+                              )}
+                          </div>
+
+                          <form onSubmit={handleAddComment} className="mt-auto pt-4 border-t border-soft-cream">
+                              <textarea 
+                                className="w-full px-4 py-2 text-sm border border-soft-cream rounded-xl focus:ring-2 focus:ring-luxury-brown/10 focus:border-luxury-brown outline-none transition-all bg-faded-white resize-none h-24 font-medium"
+                                placeholder="Add a note about the negotiation..."
+                                value={newComment}
+                                onChange={(e) => setNewComment(e.target.value)}
+                                required
+                              />
+                              <Button type="submit" className="w-full mt-2" size="sm">
+                                  Send Comment
+                              </Button>
+                          </form>
+                      </Card>
+                  </div>
+              </div>
+          </div>
+      );
   }
 
   return (
@@ -333,6 +571,7 @@ const Purchase = () => {
               o.status === 'FULLY_RECEIVED' ? 'border-l-emerald-500' :
               o.status === 'CANCELLED' ? 'border-l-red-500' :
               o.status === 'CONFIRMED' ? 'border-l-indigo-500' :
+              o.status === 'NEGOTIATION' ? 'border-l-orange-500' :
               'border-l-luxury-brown'
           }`}>
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -340,6 +579,7 @@ const Purchase = () => {
                 <div className={`p-4 rounded-2xl ${
                   o.status === 'FULLY_RECEIVED' ? 'bg-emerald-50 text-emerald-600' : 
                   o.status === 'PARTIALLY_RECEIVED' ? 'bg-amber-50 text-amber-600' : 
+                  o.status === 'NEGOTIATION' ? 'bg-orange-50 text-orange-600' :
                   o.status === 'CANCELLED' ? 'bg-red-50 text-red-600' :
                   'bg-indigo-50 text-indigo-600'
                 }`}>
@@ -351,6 +591,7 @@ const Purchase = () => {
                     <Badge variant={
                       o.status === 'FULLY_RECEIVED' ? 'success' : 
                       o.status === 'PARTIALLY_RECEIVED' ? 'warning' : 
+                      o.status === 'NEGOTIATION' ? 'orange' :
                       o.status === 'CANCELLED' ? 'danger' :
                       'purple'
                     }>
@@ -373,6 +614,30 @@ const Purchase = () => {
                         <>
                             <Button variant="secondary" onClick={() => handleCancel(o.id)} size="sm">
                                 <XCircle className="w-4 h-4 mr-1" /> Cancel
+                            </Button>
+                            <Button variant="orange" onClick={() => handleStartNegotiation(o.id)} size="sm">
+                                <TrendingDown className="w-4 h-4 mr-1" /> Bargain
+                            </Button>
+                            <Button variant="primary" onClick={() => handleConfirm(o.id)} size="sm">
+                                <CheckCircle className="w-4 h-4 mr-1" /> Confirm
+                            </Button>
+                        </>
+                    )}
+                    {o.status === 'NEGOTIATION' && (
+                        <>
+                             <Button variant="secondary" onClick={() => handleCancel(o.id)} size="sm">
+                                <XCircle className="w-4 h-4 mr-1" /> Cancel
+                            </Button>
+                            <Button 
+                                variant="orange" 
+                                onClick={() => { 
+                                    const freshOrder = orders.find(order => order.id === o.id) || o;
+                                    setNegotiationOrder(freshOrder); 
+                                    setView('negotiation'); 
+                                }} 
+                                size="sm"
+                            >
+                                <MessageSquare className="w-4 h-4 mr-1" /> Bargain
                             </Button>
                             <Button variant="primary" onClick={() => handleConfirm(o.id)} size="sm">
                                 <CheckCircle className="w-4 h-4 mr-1" /> Confirm

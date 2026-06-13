@@ -20,7 +20,7 @@ export const Card = ({ children, title, subtitle, className = "" }: CardProps) =
   </div>
 );
 
-type ButtonVariant = "primary" | "secondary" | "danger" | "success" | "ghost" | "gold";
+type ButtonVariant = "primary" | "secondary" | "danger" | "success" | "ghost" | "gold" | "orange";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -34,6 +34,7 @@ export const Button = ({ children, variant = "primary", className = "", ...props
     success: "bg-emerald-600 hover:bg-emerald-700 text-white",
     ghost: "text-warm-taupe hover:bg-faded-white hover:text-luxury-brown",
     gold: "bg-furniture-gold hover:bg-[#b08e48] text-white",
+    orange: "bg-orange-500 hover:bg-orange-600 text-white shadow-sm",
   };
   
   return (
@@ -62,14 +63,15 @@ export const Input = ({ label, error, className = "", ...props }: InputProps) =>
   </div>
 );
 
-type BadgeVariant = "neutral" | "primary" | "success" | "warning" | "danger" | "purple" | "gold";
+type BadgeVariant = "neutral" | "primary" | "success" | "warning" | "danger" | "purple" | "gold" | "orange";
 
 interface BadgeProps {
   children: React.ReactNode;
   variant?: BadgeVariant;
+  className?: string;
 }
 
-export const Badge = ({ children, variant = "neutral" }: BadgeProps) => {
+export const Badge = ({ children, variant = "neutral", className = "" }: BadgeProps) => {
   const variants: Record<BadgeVariant, string> = {
     neutral: "bg-faded-white text-warm-taupe border-soft-cream",
     primary: "bg-luxury-brown text-white border-luxury-brown",
@@ -78,10 +80,11 @@ export const Badge = ({ children, variant = "neutral" }: BadgeProps) => {
     danger: "bg-rose-50 text-rose-700 border-rose-200",
     purple: "bg-indigo-50 text-indigo-700 border-indigo-200",
     gold: "bg-amber-50 text-amber-800 border-amber-200",
+    orange: "bg-orange-500 text-white border-orange-600",
   };
   
   return (
-    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${variants[variant]}`}>
+    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${variants[variant]} ${className}`}>
       {children}
     </span>
   );

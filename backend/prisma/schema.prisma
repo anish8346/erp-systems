@@ -21,6 +21,7 @@ model User {
   SalesOrder SalesOrder[]
   ManufacturingOrder ManufacturingOrder[] @relation("UserToMO")
   PurchaseOrder PurchaseOrder[] @relation("ResponsiblePerson")
+  PurchaseOrderComment PurchaseOrderComment[]
 }
 
 model Vendor {
@@ -84,18 +85,19 @@ model SalesOrderLine {
 }
 
 model PurchaseOrder {
-  id                  String              @id @default(uuid())
+  id                  String                 @id @default(uuid())
   vendorId            String?
-  vendor              Vendor?             @relation(fields: [vendorId], references: [id])
-  vendorName          String              // Fallback/Legacy
+  vendor              Vendor?                @relation(fields: [vendorId], references: [id])
+  vendorName          String                 // Fallback/Legacy
   vendorAddress       String?
   responsiblePersonId String?
-  responsiblePerson   User?               @relation("ResponsiblePerson", fields: [responsiblePersonId], references: [id])
-  status              String              // DRAFT, CONFIRMED, PARTIALLY_RECEIVED, FULLY_RECEIVED, CANCELLED
+  responsiblePerson   User?                  @relation("ResponsiblePerson", fields: [responsiblePersonId], references: [id])
+  status              String                 // DRAFT, NEGOTIATION, CONFIRMED, PARTIALLY_RECEIVED, FULLY_RECEIVED, CANCELLED
   totalAmount         Float
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
   orderLines          PurchaseOrderLine[]
+  comments            PurchaseOrderComment[]
 }
 
 model PurchaseOrderLine {
@@ -105,8 +107,19 @@ model PurchaseOrderLine {
   quantity        Float
   receivedQty     Float         @default(0)
   price           Float
+  initialPrice    Float         @default(0) // Price at the time of order creation
   purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
   product         Product       @relation(fields: [productId], references: [id])
+}
+
+model PurchaseOrderComment {
+  id              String        @id @default(uuid())
+  purchaseOrderId String
+  userId          String
+  text            String
+  createdAt       DateTime      @default(now())
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  user            User          @relation(fields: [userId], references: [id])
 }
 
 model BoM {
