@@ -3,3 +3,6 @@ node_modules
 .env
 
 /generated/prisma
+server.log
+server_debug.log
+test-get-mos.ts

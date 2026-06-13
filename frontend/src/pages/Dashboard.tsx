@@ -1,7 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
-import { ShoppingCart, Truck, Factory, AlertTriangle, TrendingUp, Package, History } from 'lucide-react';
-import { Card, Badge } from '../components/UI';
+import { ShoppingCart, Truck, Factory, AlertTriangle, TrendingUp, Package, History, IndianRupee, TrendingDown, Wallet } from 'lucide-react';
+import { Card, Badge, Button } from '../components/UI';
+import type { SalesOrder, Product, ManufacturingOrder, StockLedger } from '../types';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -9,29 +11,47 @@ const Dashboard = () => {
     pendingDeliveries: 0,
     activeMOs: 0,
     lowStock: 0,
+    delayedOrders: 0,
   });
-  const [recentLogs, setRecentLogs] = useState<any[]>([]);
+  const [finance, setFinance] = useState({
+    totalRevenue: 0,
+    totalExpenses: 0,
+    netProfit: 0
+  });
+  const [recentLogs, setRecentLogs] = useState<StockLedger[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
         const [sales, products, mos, ledger] = await Promise.all([
-          api.get('/sales').catch(() => ({ data: [] })),
-          api.get('/products').catch(() => ({ data: [] })),
-          api.get('/manufacturing').catch(() => ({ data: [] })),
-          api.get('/products/ledger').catch(() => ({ data: [] })),
+          api.get('/sales'),
+          api.get('/products'),
+          api.get('/manufacturing'),
+          api.get('/products/ledger'),
         ]);
 
-        const confirmedSales = (sales.data || []).filter((s: any) => s.status === 'CONFIRMED');
-        const lowStockItems = (products.data || []).filter((p: any) => (p.qtyOnHand - p.qtyReserved) <= 0);
-        const activeMFG = (mos.data || []).filter((m: any) => m.status !== 'DONE');
+        if (['OWNER', 'ADMIN'].includes(user.role)) {
+          const finRes = await api.get('/finance/summary');
+          setFinance(finRes.data);
+        }
+
+        const confirmedSales = (sales.data || []).filter((s: SalesOrder) => s.status === 'CONFIRMED' || s.status === 'PARTIALLY_DELIVERED');
+        const lowStockItems = (products.data || []).filter((p: Product) => (p.qtyOnHand - p.qtyReserved) <= 0);
+        const activeMFG = (mos.data || []).filter((m: ManufacturingOrder) => m.status !== 'DONE');
+
+        const delayedOrdersCount = confirmedSales.filter((s: SalesOrder) => {
+          return new Date().getTime() - new Date(s.createdAt).getTime() > 2 * 24 * 60 * 60 * 1000;
+        }).length;
 
         setStats({
           totalSales: (sales.data || []).length,
           pendingDeliveries: confirmedSales.length,
           activeMOs: activeMFG.length,
           lowStock: lowStockItems.length,
+          delayedOrders: delayedOrdersCount,
         });
         setRecentLogs((ledger.data || []).slice(0, 5));
       } catch (err) {
@@ -41,12 +61,12 @@ const Dashboard = () => {
       }
     };
     fetchStats();
-  }, []);
+  }, [user.role]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-luxury-brown"></div>
       </div>
     );
   }
@@ -54,127 +74,172 @@ const Dashboard = () => {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div>
-        <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Executive Dashboard</h2>
-        <p className="text-gray-500 mt-1">Real-time operational overview for Shiv Furniture Works.</p>
+        <h2 className="text-3xl font-bold text-luxury-brown leading-none">Dashboard</h2>
+        <p className="text-warm-taupe mt-2 text-sm font-semibold opacity-70">Real-time Command Overview</p>
       </div>
       
+      {/* Financial Section (Restricted) */}
+      {['OWNER', 'ADMIN'].includes(user.role) && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-luxury-brown p-10 rounded-2xl shadow-lg relative overflow-hidden">
+           <div className="absolute top-0 right-0 w-64 h-64 bg-furniture-gold/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+           
+           <div className="md:col-span-3 mb-6 flex items-center justify-between">
+              <div>
+                <h3 className="text-white font-bold text-xl flex items-center gap-3">
+                  <Wallet className="w-6 h-6 text-furniture-gold" />
+                  Financial Performance
+                </h3>
+                <p className="text-faded-white/40 text-[10px] font-semibold uppercase tracking-wider mt-1.5 ml-9">Liquidity analysis based on deliveries</p>
+              </div>
+              <Badge variant="gold">Profit Metrics</Badge>
+           </div>
+
+           <FinanceCard 
+              label="Total Revenue" 
+              value={finance.totalRevenue} 
+              icon={<IndianRupee className="w-5 h-5" />} 
+              sub="Delivered Goods"
+              color="text-emerald-400"
+           />
+           <FinanceCard 
+              label="Total Costs" 
+              value={finance.totalExpenses} 
+              icon={<TrendingDown className="w-5 h-5" />} 
+              sub="Material Procurement"
+              color="text-rose-400"
+           />
+           <FinanceCard 
+              label="Net Cash Flow" 
+              value={finance.netProfit} 
+              icon={<TrendingUp className="w-5 h-5" />} 
+              sub="Current Margin"
+              color={finance.netProfit >= 0 ? "text-furniture-gold" : "text-rose-400"}
+              isBold
+           />
+        </div>
+      )}
+
       {/* KPI Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <KPICard 
           title="Total Orders" 
           value={stats.totalSales} 
           icon={<ShoppingCart className="w-6 h-6" />} 
-          color="blue" 
-          trend="+12% from last month"
+          color="brown" 
+          trend="+12% Trend"
         />
         <KPICard 
           title="To Deliver" 
           value={stats.pendingDeliveries} 
           icon={<Truck className="w-6 h-6" />} 
-          color="orange" 
-          trend="4 urgent today"
+          color="taupe" 
+          trend={`${stats.delayedOrders > 0 ? `${stats.delayedOrders} delayed` : 'On track'}`}
         />
         <KPICard 
-          title="Production" 
+          title="Active MOs" 
           value={stats.activeMOs} 
           icon={<Factory className="w-6 h-6" />} 
-          color="purple" 
-          trend="85% capacity"
+          color="gold" 
+          trend="Production Active"
         />
         <KPICard 
           title="Stock Alerts" 
           value={stats.lowStock} 
           icon={<AlertTriangle className="w-6 h-6" />} 
           color="red" 
-          trend="Action required"
+          trend="Immediate Action"
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Recent Activity */}
-        <Card title="Recent Stock Movements" className="lg:col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-20">
+        <Card title="Recent Stock Movements" subtitle="Last 5 verified inventory changes" className="lg:col-span-3">
           <div className="space-y-4">
-            {recentLogs.map((log: any) => (
-              <div key={log.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors border border-transparent hover:border-gray-100">
-                <div className="flex items-center gap-4">
-                  <div className={`p-2 rounded-lg ${log.quantityChange > 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+            {recentLogs.map((log: StockLedger) => (
+              <div key={log.id} className="flex items-center justify-between p-4 hover:bg-faded-white rounded-2xl transition-all border border-transparent hover:border-[#e8e4db]">
+                <div className="flex items-center gap-5">
+                  <div className={`p-3 rounded-xl ${log.quantityChange > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'} border border-current/10`}>
                     <Package className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-800">{log.product?.name || 'Unknown Product'}</p>
-                    <p className="text-xs text-gray-500">{new Date(log.createdAt).toLocaleString()}</p>
+                    <p className="font-semibold text-luxury-brown text-sm">{log.product?.name || 'Unknown Product'}</p>
+                    <p className="text-[10px] text-warm-taupe font-semibold mt-1">{new Date(log.createdAt).toLocaleString()}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className={`font-bold ${log.quantityChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <div className="text-right flex flex-col items-end gap-1.5">
+                  <p className={`font-bold text-lg leading-none ${log.quantityChange > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                     {log.quantityChange > 0 ? '+' : ''}{log.quantityChange}
                   </p>
                   <Badge variant="neutral">{log.type}</Badge>
                 </div>
               </div>
             ))}
-            {recentLogs.length === 0 && <p className="text-center py-10 text-gray-400 italic">No inventory activity yet.</p>}
+            {recentLogs.length === 0 && <p className="text-center py-10 text-warm-taupe font-medium text-sm">No inventory activity recorded.</p>}
           </div>
-          <button className="w-full mt-6 text-sm text-blue-600 font-bold hover:underline flex items-center justify-center gap-1">
-            <History className="w-4 h-4" /> View Full Ledger
-          </button>
-        </Card>
-
-        {/* Quick Links / Status */}
-        <Card title="System Health" subtitle="Real-time connectivity status">
-          <div className="space-y-6">
-            <HealthItem label="Database" status="Connected" />
-            <HealthItem label="API Gateway" status="Operational" />
-            <HealthItem label="Auth Service" status="Operational" />
-            
-            <div className="mt-8 p-4 bg-blue-50 rounded-2xl">
-              <div className="flex items-start gap-3">
-                <TrendingUp className="w-5 h-5 text-blue-600 mt-0.5" />
-                <div>
-                  <p className="text-sm font-bold text-blue-900">Automation Tip</p>
-                  <p className="text-xs text-blue-700 mt-1">Make To Order (MTO) is active. Shortages will automatically trigger POs or MOs.</p>
-                </div>
-              </div>
-            </div>
-          </div>
+          <Button variant="secondary" className="w-full mt-10 text-[11px] font-semibold" onClick={() => window.location.href='/dashboard/ledger'}>
+            <History className="w-4 h-4 mr-2" /> View Complete Ledger
+          </Button>
         </Card>
       </div>
     </div>
   );
 };
 
-const KPICard = ({ title, value, icon, color, trend }: any) => {
-  const colors: any = {
-    blue: "text-blue-600 bg-blue-50 border-blue-100",
-    orange: "text-orange-600 bg-orange-50 border-orange-100",
-    purple: "text-purple-600 bg-purple-50 border-purple-100",
-    red: "text-red-600 bg-red-50 border-red-100",
-  };
+interface FinanceCardProps {
+  label: string;
+  value: number;
+  icon: React.ReactNode;
+  sub: string;
+  color: string;
+  isBold?: boolean;
+}
 
-  return (
-    <div className={`p-6 bg-white rounded-2xl border shadow-sm transition-all hover:shadow-md ${colors[color]}`}>
-      <div className="flex justify-between items-start">
-        <div className={`p-3 rounded-xl border ${colors[color]}`}>
+const FinanceCard = ({ label, value, icon, sub, color, isBold }: FinanceCardProps) => (
+  <div className="bg-white/5 border border-white/10 p-8 rounded-2xl backdrop-blur-sm">
+    <div className="flex items-center gap-3 mb-4">
+       <div className={`p-2.5 rounded-xl bg-white/10 ${color} border border-white/10`}>
           {icon}
-        </div>
-        <span className="text-[10px] font-black uppercase tracking-widest opacity-60">{title}</span>
-      </div>
-      <div className="mt-4">
-        <p className="text-3xl font-black text-gray-900">{value}</p>
-        <p className="text-xs text-gray-500 mt-1 font-medium">{trend}</p>
-      </div>
+       </div>
+       <span className="text-white/40 text-[10px] font-semibold uppercase tracking-wider">{label}</span>
     </div>
-  );
-};
-
-const HealthItem = ({ label, status }: any) => (
-  <div className="flex items-center justify-between">
-    <span className="text-sm text-gray-600 font-medium">{label}</span>
-    <div className="flex items-center gap-2">
-      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-      <span className="text-xs font-bold text-gray-800">{status}</span>
-    </div>
+    <p className={`text-3xl ${isBold ? 'font-bold' : 'font-semibold'} text-white`}>₹{value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+    <p className="text-white/20 text-[10px] mt-2 font-semibold uppercase tracking-wider">{sub}</p>
   </div>
 );
 
+interface KPICardProps {
+  title: string;
+  value: number;
+  icon: React.ReactNode;
+  color: 'brown' | 'taupe' | 'gold' | 'red';
+  trend: string;
+}
+
+const KPICard = ({ title, value, icon, color, trend }: KPICardProps) => {
+  const colors: Record<string, string> = {
+    brown: "text-luxury-brown bg-white border-[#e8e4db]",
+    taupe: "text-warm-taupe bg-white border-[#e8e4db]",
+    gold: "text-furniture-gold bg-white border-[#e8e4db]",
+    red: "text-rose-600 bg-white border-rose-100",
+  };
+
+  return (
+    <div className={`p-8 rounded-2xl border shadow-sm transition-all hover:shadow-lg hover:-translate-y-1 duration-500 ${colors[color]}`}>
+      <div className="flex justify-between items-start mb-6">
+        <div className={`p-3.5 rounded-xl border border-current/10 bg-faded-white`}>
+          {icon}
+        </div>
+        <span className="text-[10px] font-semibold uppercase tracking-wider opacity-40">{title}</span>
+      </div>
+      <div className="mt-4">
+        <p className="text-4xl font-bold text-luxury-brown leading-none">{value}</p>
+        <div className="flex items-center gap-2 mt-3">
+           <div className="w-1 h-1 rounded-full bg-current opacity-30"></div>
+           <p className="text-[10px] font-semibold uppercase tracking-wider opacity-60">{trend}</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default Dashboard;
+

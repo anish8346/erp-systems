@@ -15,6 +15,22 @@ body {
   font-family: 'Nunito', system-ui, sans-serif;
 }
 
+
+@theme {
+  --font-sans: "Nunito", system-ui, sans-serif;
+  --color-luxury-brown: #4a3728;
+  --color-warm-taupe: #8c7b6d;
+  --color-faded-white: #f9f7f2;
+  --color-soft-cream: #f1ede4;
+  --color-furniture-gold: #c5a059;
+}
+
+body {
+  background-color: var(--color-faded-white);
+  color: var(--color-luxury-brown);
+  font-family: 'Nunito', system-ui, sans-serif;
+}
+
 /* Override browser autofill default styles for transparent/glassmorphic designs */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,

@@ -18,6 +18,20 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   AuditLog  AuditLog[]
+  SalesOrder SalesOrder[]
+  ManufacturingOrder ManufacturingOrder[] @relation("UserToMO")
+}
+
+model Vendor {
+  id        String   @id @default(uuid())
+  name      String
+  email     String?
+  phone     String?
+  address   String?
+  products  Product[]
+  purchaseOrders PurchaseOrder[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Product {
@@ -30,6 +44,7 @@ model Product {
   procurementType String   // MTS, MTO
   supplyMethod    String   // MANUFACTURE, PURCHASE
   vendorId        String?
+  vendor          Vendor?  @relation(fields: [vendorId], references: [id])
   bomId           String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -40,16 +55,20 @@ model Product {
   BoMLine           BoMLine[]
   ManufacturingOrder ManufacturingOrder[]
   StockLedger       StockLedger[]
+  MOComponent       MOComponent[]
 }
 
 model SalesOrder {
-  id           String           @id @default(uuid())
-  customerName String
-  status       String           // DRAFT, CONFIRMED, DELIVERED, CANCELLED
-  totalAmount  Float
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-  orderLines   SalesOrderLine[]
+  id              String           @id @default(uuid())
+  customerName    String
+  customerAddress String?
+  salesPersonId   String?
+  salesPerson     User?            @relation(fields: [salesPersonId], references: [id])
+  status          String           // DRAFT, CONFIRMED, PARTIALLY_DELIVERED, DELIVERED, CANCELLED
+  totalAmount     Float
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  orderLines      SalesOrderLine[]
 }
 
 model SalesOrderLine {
@@ -57,6 +76,7 @@ model SalesOrderLine {
   salesOrderId String
   productId    String
   quantity     Float
+  deliveredQty Float      @default(0)
   price        Float
   salesOrder   SalesOrder @relation(fields: [salesOrderId], references: [id])
   product      Product    @relation(fields: [productId], references: [id])
@@ -64,8 +84,10 @@ model SalesOrderLine {
 
 model PurchaseOrder {
   id           String              @id @default(uuid())
-  vendorName   String
-  status       String              // DRAFT, CONFIRMED, RECEIVED
+  vendorId     String?
+  vendor       Vendor?             @relation(fields: [vendorId], references: [id])
+  vendorName   String              // Fallback/Legacy
+  status       String              // DRAFT, CONFIRMED, PARTIALLY_RECEIVED, RECEIVED
   totalAmount  Float
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
@@ -77,6 +99,7 @@ model PurchaseOrderLine {
   purchaseOrderId String
   productId       String
   quantity        Float
+  receivedQty     Float         @default(0)
   price           Float
   purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
   product         Product       @relation(fields: [productId], references: [id])
@@ -88,6 +111,7 @@ model BoM {
   name       String
   product    Product   @relation("ProductToBoM", fields: [productId], references: [id])
   bomLines   BoMLine[]
+  operations Operation[]
   ManufacturingOrder ManufacturingOrder[]
 }
 
@@ -104,6 +128,7 @@ model WorkCenter {
   id         String      @id @default(uuid())
   name       String
   Operations Operation[]
+  WorkOrders WorkOrder[]
 }
 
 model Operation {
@@ -111,6 +136,8 @@ model Operation {
   name         String
   duration     Int         // in minutes
   workCenterId String
+  bomId        String?
+  bom          BoM?        @relation(fields: [bomId], references: [id])
   workCenter   WorkCenter  @relation(fields: [workCenterId], references: [id])
   WorkOrders   WorkOrder[]
 }
@@ -119,23 +146,40 @@ model ManufacturingOrder {
   id          String      @id @default(uuid())
   productId   String
   quantity    Float
-  status      String      // DRAFT, CONFIRMED, IN_PROGRESS, DONE
+  status      String      // DRAFT, CONFIRMED, IN_PROGRESS, DONE, CANCELLED
   bomId       String
+  assigneeId  String?
+  assignee    User?       @relation("UserToMO", fields: [assigneeId], references: [id])
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   product     Product     @relation(fields: [productId], references: [id])
   bom         BoM         @relation(fields: [bomId], references: [id])
   WorkOrders  WorkOrder[]
+  components  MOComponent[]
+}
+
+model MOComponent {
+  id          String    @id @default(uuid())
+  moId        String
+  productId   String
+  toConsume   Float
+  consumed    Float     @default(0)
+  mo          ManufacturingOrder @relation(fields: [moId], references: [id])
+  product     Product   @relation(fields: [productId], references: [id])
 }
 
 model WorkOrder {
-  id          String             @id @default(uuid())
-  moId        String
-  operationId String
-  status      String             // PENDING, IN_PROGRESS, DONE
-  duration    Int
-  mo          ManufacturingOrder @relation(fields: [moId], references: [id])
-  operation   Operation          @relation(fields: [operationId], references: [id])
+  id               String             @id @default(uuid())
+  moId             String
+  operationId      String?
+  operationName    String?            // Fallback for custom operations
+  workCenterId     String?
+  status           String             // PENDING, IN_PROGRESS, DONE
+  expectedDuration Int                @default(0) // in minutes
+  realDuration     Int                @default(0)
+  mo               ManufacturingOrder @relation(fields: [moId], references: [id])
+  operation        Operation?         @relation(fields: [operationId], references: [id])
+  workCenter       WorkCenter?        @relation(fields: [workCenterId], references: [id])
 }
 
 model StockLedger {
