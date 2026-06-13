@@ -34,7 +34,7 @@ export const getVendors = async (req: AuthRequest, res: Response) => {
 
 export const updateVendor = async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { name, email, phone, address } = req.body;
     const vendor = await prisma.vendor.update({
       where: { id },

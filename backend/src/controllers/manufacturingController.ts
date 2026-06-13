@@ -44,7 +44,7 @@ export const createMO = async (req: AuthRequest, res: Response) => {
 
 export const produceMO = async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const mo = await prisma.manufacturingOrder.findUnique({
       where: { id },
       include: { 
@@ -125,7 +125,7 @@ export const produceMO = async (req: AuthRequest, res: Response) => {
 
 export const updateWorkOrderStatus = async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { status } = req.body;
 
     const wo = await prisma.workOrder.update({

@@ -26,7 +26,7 @@ export const getRequests = async (req: Request, res: Response) => {
 
 export const updateRequestStatus = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { status } = req.body;
     const updated = await prisma.accessRequest.update({
       where: { id },

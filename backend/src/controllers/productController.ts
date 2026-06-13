@@ -60,7 +60,7 @@ export const getProducts = async (req: Request, res: Response) => {
 
 export const getProductById = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const product = await prisma.product.findUnique({
       where: { id },
       include: {
@@ -84,7 +84,7 @@ export const getProductById = async (req: Request, res: Response) => {
 
 export const updateProduct = async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { name, salesPrice, costPrice, procurementType, supplyMethod, vendorId } = req.body;
     
     const product = await prisma.product.update({
@@ -112,7 +112,7 @@ export const updateProduct = async (req: AuthRequest, res: Response) => {
 
 export const deleteProduct = async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     
     const linesCount = await prisma.salesOrderLine.count({ where: { productId: id } });
     if (linesCount > 0) {
@@ -134,7 +134,7 @@ export const deleteProduct = async (req: AuthRequest, res: Response) => {
 
 export const adjustStock = async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { adjustment, reason } = req.body; 
     
     if (!adjustment || isNaN(Number(adjustment))) {

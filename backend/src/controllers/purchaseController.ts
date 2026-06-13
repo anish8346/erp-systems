@@ -43,7 +43,7 @@ export const createPurchaseOrder = async (req: AuthRequest, res: Response) => {
 
 export const receivePurchaseOrder = async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { items } = req.body;
 
     const po = await prisma.purchaseOrder.findUnique({

@@ -41,7 +41,7 @@ export const createSalesOrder = async (req: AuthRequest, res: Response) => {
 
 export const confirmSalesOrder = async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     
     const so = await prisma.salesOrder.findUnique({
       where: { id },
@@ -118,7 +118,7 @@ export const confirmSalesOrder = async (req: AuthRequest, res: Response) => {
 
 export const deliverSalesOrder = async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { items } = req.body; 
     
     const so = await prisma.salesOrder.findUnique({
