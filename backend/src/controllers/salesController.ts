@@ -137,13 +137,19 @@ export const deliverSalesOrder = async (req: AuthRequest, res: Response) => {
       for (const line of so.orderLines) {
         const itemToDeliver = items?.find((i: any) => i.lineId === line.id);
         const qtyToDeliver = itemToDeliver ? Number(itemToDeliver.quantity) : 0;
-        
         if (qtyToDeliver > 0) {
           const remainingToDeliver = line.quantity - line.deliveredQty;
           if (qtyToDeliver > remainingToDeliver) {
             throw new Error(`Cannot deliver ${qtyToDeliver} for ${line.productId}. Only ${remainingToDeliver} remaining.`);
           }
 
+          // Strict Physical Stock Check
+          const product = await tx.product.findUnique({ where: { id: line.productId } });
+          if (!product || product.qtyOnHand < qtyToDeliver) {
+            throw new Error(`Insufficient physical stock for ${product?.name || 'product'}. Required: ${qtyToDeliver}, Available: ${product?.qtyOnHand || 0}`);
+          }
+
+          // Decrease both OnHand and Reserved
           await tx.product.update({
             where: { id: line.productId },
             data: { 
