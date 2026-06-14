@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
-import { ShoppingCart, Truck, Factory, AlertTriangle, TrendingUp, Package, History, IndianRupee, TrendingDown, Wallet } from 'lucide-react';
+import { ShoppingCart, Truck, Factory, AlertTriangle, Package, History } from 'lucide-react';
 import { Card, Badge, Button } from '../components/UI';
 import type { SalesOrder, Product, ManufacturingOrder, StockLedger } from '../types';
 
@@ -12,11 +12,6 @@ const Dashboard = () => {
     activeMOs: 0,
     lowStock: 0,
     delayedOrders: 0,
-  });
-  const [finance, setFinance] = useState({
-    totalRevenue: 0,
-    totalExpenses: 0,
-    netProfit: 0
   });
   const [recentLogs, setRecentLogs] = useState<StockLedger[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,11 +27,6 @@ const Dashboard = () => {
           api.get('/manufacturing'),
           api.get('/products/ledger'),
         ]);
-
-        if (['OWNER', 'ADMIN'].includes(user.role)) {
-          const finRes = await api.get('/finance/summary');
-          setFinance(finRes.data);
-        }
 
         const salesData = Array.isArray(salesRes.data) ? salesRes.data : (salesRes.data?.orders || []);
         const productsData = Array.isArray(productsRes.data) ? productsRes.data : (productsRes.data?.products || []);
@@ -80,50 +70,9 @@ const Dashboard = () => {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div>
         <h2 className="text-3xl font-bold text-luxury-brown leading-none">Dashboard</h2>
-        <p className="text-warm-taupe mt-2 text-sm font-semibold opacity-70">Real-time Command Overview</p>
+        <p className="text-warm-taupe mt-2 text-sm font-semibold opacity-70">Real-time Operational Overview</p>
       </div>
       
-      {/* Financial Section (Restricted) */}
-      {['OWNER', 'ADMIN'].includes(user.role) && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-luxury-brown p-10 rounded-2xl shadow-lg relative overflow-hidden">
-           <div className="absolute top-0 right-0 w-64 h-64 bg-furniture-gold/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
-           
-           <div className="md:col-span-3 mb-6 flex items-center justify-between">
-              <div>
-                <h3 className="text-white font-bold text-xl flex items-center gap-3">
-                  <Wallet className="w-6 h-6 text-furniture-gold" />
-                  Financial Performance
-                </h3>
-                <p className="text-faded-white/40 text-[10px] font-semibold uppercase tracking-wider mt-1.5 ml-9">Liquidity analysis based on deliveries</p>
-              </div>
-              <Badge variant="gold">Profit Metrics</Badge>
-           </div>
-
-           <FinanceCard 
-              label="Total Revenue" 
-              value={finance.totalRevenue} 
-              icon={<IndianRupee className="w-5 h-5" />} 
-              sub="Delivered Goods"
-              color="text-emerald-400"
-           />
-           <FinanceCard 
-              label="Total Costs" 
-              value={finance.totalExpenses} 
-              icon={<TrendingDown className="w-5 h-5" />} 
-              sub="Material Procurement"
-              color="text-rose-400"
-           />
-           <FinanceCard 
-              label="Net Cash Flow" 
-              value={finance.netProfit} 
-              icon={<TrendingUp className="w-5 h-5" />} 
-              sub="Current Margin"
-              color={finance.netProfit >= 0 ? "text-furniture-gold" : "text-rose-400"}
-              isBold
-           />
-        </div>
-      )}
-
       {/* KPI Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <KPICard 
@@ -188,28 +137,6 @@ const Dashboard = () => {
     </div>
   );
 };
-
-interface FinanceCardProps {
-  label: string;
-  value: number;
-  icon: React.ReactNode;
-  sub: string;
-  color: string;
-  isBold?: boolean;
-}
-
-const FinanceCard = ({ label, value, icon, sub, color, isBold }: FinanceCardProps) => (
-  <div className="bg-white/5 border border-white/10 p-8 rounded-2xl backdrop-blur-sm">
-    <div className="flex items-center gap-3 mb-4">
-       <div className={`p-2.5 rounded-xl bg-white/10 ${color} border border-white/10`}>
-          {icon}
-       </div>
-       <span className="text-white/40 text-[10px] font-semibold uppercase tracking-wider">{label}</span>
-    </div>
-    <p className={`text-3xl ${isBold ? 'font-bold' : 'font-semibold'} text-white`}>₹{value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
-    <p className="text-white/20 text-[10px] mt-2 font-semibold uppercase tracking-wider">{sub}</p>
-  </div>
-);
 
 interface KPICardProps {
   title: string;

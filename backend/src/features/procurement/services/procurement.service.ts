@@ -211,11 +211,12 @@ export class ProcurementService {
     }
 
     if (totalReceivedValue > 0) {
+        const timestamp = new Date().toLocaleTimeString();
         await FinanceService.logExpense(
             totalReceivedValue,
             'PURCHASE',
-            id,
-            `Expense for goods received from ${po.vendorName}`,
+            `${id}:${Date.now()}`,
+            `Receipt from ${po.vendorName} (at ${timestamp})`,
             userId
         );
     }

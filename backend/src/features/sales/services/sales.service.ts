@@ -109,11 +109,12 @@ export const deliverSalesOrder = async (id: string, items: DeliverItem[], userId
   }
 
   if (deliveredValue > 0) {
+      const timestamp = new Date().toLocaleTimeString();
       await FinanceService.logIncome(
           deliveredValue, 
           'SALES', 
-          id, 
-          `Income from shipment for ${so.customerName}`,
+          `${id}:${Date.now()}`, 
+          `Shipment for ${so.customerName} (at ${timestamp})`,
           userId
       );
   }
