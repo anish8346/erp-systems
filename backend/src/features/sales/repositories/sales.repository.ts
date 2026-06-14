@@ -47,7 +47,36 @@ export class SalesRepository {
 
   async createManufacturingOrder(data: CreateMOData) {
     return await prisma.manufacturingOrder.create({
-      data
+      data: {
+        productId: data.productId,
+        quantity: Number(data.quantity),
+        status: data.status || 'DRAFT',
+        bomId: data.bomId,
+        assigneeId: data.assigneeId && data.assigneeId.trim() !== '' ? data.assigneeId : undefined,
+        components: {
+          create: (data.components || []).map(c => ({
+            productId: c.productId,
+            toConsume: Number(c.toConsume),
+            consumed: 0,
+          }))
+        },
+        WorkOrders: {
+          create: (data.workOrders || []).map(w => ({
+            operationId: w.operationId,
+            operationName: w.operationName,
+            workCenterId: w.workCenterId,
+            expectedDuration: Number(w.expectedDuration),
+            realDuration: 0,
+            status: 'PENDING',
+          }))
+        }
+      },
+      include: {
+        product: true,
+        bom: true,
+        components: { include: { product: true } },
+        WorkOrders: { include: { operation: true, workCenter: true } },
+      }
     });
   }
 
@@ -69,15 +98,69 @@ export class SalesRepository {
     if (!so) throw new Error('Sales Order not found.');
 
     return await prisma.$transaction(async (tx) => {
-      // Release reservations
       for (const line of (so.orderLines || [])) {
-        const remainingToDeliver = line.quantity - line.deliveredQty;
-        if (remainingToDeliver > 0) {
+        if (line.deliveredQty >= line.quantity) continue;
+
+        const product = await tx.product.findUnique({ where: { id: line.productId } });
+        if (!product) continue;
+
+        const releasedQty = Math.min(line.quantity - line.deliveredQty, Number(product.qtyReserved));
+        if (releasedQty > 0) {
           await tx.product.update({
             where: { id: line.productId },
-            data: { qtyReserved: { decrement: remainingToDeliver } }
+            data: { qtyReserved: { decrement: releasedQty } }
           });
         }
+      }
+
+      const productIds = so.orderLines.map(l => l.productId);
+
+      const linkedMOs = await tx.manufacturingOrder.findMany({
+        where: {
+          status: { in: ['DRAFT', 'CONFIRMED'] },
+          components: { some: { productId: { in: productIds } } }
+        },
+        select: { id: true }
+      });
+
+      const linkedPO = await tx.purchaseOrder.findFirst({
+        where: {
+          status: 'DRAFT',
+          orderLines: { some: { productId: { in: productIds } } }
+        },
+        select: { id: true }
+      });
+
+      if (linkedMOs.length > 0) {
+        await tx.manufacturingOrder.updateMany({
+          where: { id: { in: linkedMOs.map(m => m.id) } },
+          data: { status: 'CANCELLED' }
+        });
+
+        for (const moId of linkedMOs.map(m => m.id)) {
+          const moComponents = (await tx.manufacturingOrder.findUnique({
+            where: { id: moId },
+            include: { components: { include: { product: true } } }
+          }))?.components || [];
+
+          for (const comp of moComponents) {
+            if (!comp.product) continue;
+            const released = Math.min(comp.toConsume, Number(comp.product.qtyReserved));
+            if (released > 0) {
+              await tx.product.update({
+                where: { id: comp.productId },
+                data: { qtyReserved: { decrement: released } }
+              });
+            }
+          }
+        }
+      }
+
+      if (linkedPO) {
+        await tx.purchaseOrder.update({
+          where: { id: linkedPO.id },
+          data: { status: 'CANCELLED' }
+        });
       }
 
       return await tx.salesOrder.update({

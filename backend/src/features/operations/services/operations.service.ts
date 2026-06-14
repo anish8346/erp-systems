@@ -67,12 +67,12 @@ export class OperationsService {
     await prisma.$transaction(async (tx) => {
       // 1. Consume components
       for (const comp of (mo.components || [])) {
-        const consumedQty = comp.consumed || comp.toConsume; // Use entered consumed or fallback to planned
+        const consumedQty = comp.consumed > 0 ? comp.consumed : comp.toConsume;
         await tx.product.update({
           where: { id: comp.productId },
           data: { 
             qtyOnHand: { decrement: consumedQty },
-            qtyReserved: { decrement: comp.toConsume } // Use planned toConsume for reservation release
+            qtyReserved: { decrement: consumedQty }
           }
         });
 
@@ -126,18 +126,33 @@ export class OperationsService {
     return { message: 'Production completed successfully.' };
   }
 
-  static async cancelMO(id: string, userId?: string) {
+  static async cancelMO(id: string, userId?: string, skipComponentRelease = false) {
     const mo = await OperationsRepository.findMOById(id);
     if (!mo) throw new Error('MO not found.');
     if (mo.status === 'DONE') throw new Error('Cannot cancel a completed MO.');
 
-    const updated = await OperationsRepository.updateMOStatus(id, 'CANCELLED');
+    await prisma.$transaction(async (tx) => {
+      if (!skipComponentRelease && mo.status !== 'DRAFT') {
+        for (const comp of (mo.components || [])) {
+          const product = await tx.product.findUnique({ where: { id: comp.productId } });
+          const releaseQty = product ? Math.min(comp.toConsume, Number(product.qtyReserved)) : comp.toConsume;
+          if (releaseQty > 0) {
+            await tx.product.update({
+              where: { id: comp.productId },
+              data: { qtyReserved: { decrement: releaseQty } }
+            });
+          }
+        }
+      }
+
+      await OperationsRepository.updateMOStatus(id, 'CANCELLED');
+    });
 
     if (userId) {
       await logActivity(userId, 'CANCEL', 'MANUFACTURING_ORDER', id, `Cancelled MO for ${mo.product?.name}`);
     }
 
-    return updated;
+    return await OperationsRepository.findMOById(id);
   }
 
   static async updateWorkOrderStatus(id: string, status: WOStatus, userId?: string) {

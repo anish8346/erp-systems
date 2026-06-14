@@ -3,7 +3,8 @@ import { salesRepository } from '../repositories/sales.repository.js';
 import { logActivity } from '../../../core/utils/logger.js';
 import { AutomationService } from '../../../core/utils/automation.js';
 import { FinanceService } from '../../finance/services/finance.service.js';
-import type { CreateSalesOrderData, CreateSalesOrderLine, DeliverItem } from '../../../core/types/index.js';
+import { OperationsService } from '../../operations/services/operations.service.js';
+import type { CreateSalesOrderData, CreateSalesOrderLine, DeliverItem, CreateMOData, MOStatus } from '../../../core/types/index.js';
 
 export const createSalesOrder = async (data: CreateSalesOrderData & { customerId?: string, taxRate?: number }, userId?: string) => {
   const { customerName, customerAddress, salesPersonId, orderLines, customerId, taxRate = 0 } = data;
@@ -55,12 +56,35 @@ export const confirmSalesOrder = async (id: string, userId?: string) => {
     // 2. Trigger MTO if needed
     if (shortage > 0 && product.procurementType === 'MTO') {
       if (product.supplyMethod === 'MANUFACTURE' && product.bomId) {
-        await salesRepository.createManufacturingOrder({
+        const bom = await prisma.boM.findUnique({
+          where: { id: product.bomId },
+          include: {
+            bomLines: { include: { component: true } },
+            operations: { include: { workCenter: true } }
+          }
+        });
+        if (!bom) throw new Error('Bill of Materials not found for product.');
+
+        const moData: CreateMOData = {
           productId: product.id,
           quantity: shortage,
-          status: 'CONFIRMED',
-          bomId: product.bomId,
-        });
+          bomId: bom.id,
+          status: 'DRAFT',
+          components: {
+            create: bom.bomLines.map(line => ({
+              productId: line.componentId,
+              toConsume: Number(line.quantity) * Number(shortage),
+            }))
+          },
+          workOrders: bom.operations?.map(op => ({
+            operationId: op.id,
+            workCenterId: op.workCenterId,
+            expectedDuration: Number(op.duration) * Number(shortage),
+          })) || []
+        };
+
+        const createdMO = await salesRepository.createManufacturingOrder(moData);
+        await operationsService.confirmMO(createdMO.id, userId);
       } else if (product.supplyMethod === 'PURCHASE' && product.vendorId) {
         // Fetch vendor for details
         const vendor = await prisma.vendor.findUnique({ where: { id: product.vendorId } });
