@@ -33,12 +33,14 @@ export const authorize = (roles: string[]) => {
       return res.status(401).json({ error: 'Authentication required.' });
     }
 
-    if (req.user.role === 'ADMIN' || req.user.role === 'OWNER') {
-        return next(); // Admins and Owners bypass most checks
+    const userRole = req.user.role?.toUpperCase();
+
+    if (userRole === 'ADMIN' || userRole === 'OWNER') {
+        return next(); 
     }
 
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ error: 'Permission denied. You do not have the required role.' });
+    if (!roles.map(r => r.toUpperCase()).includes(userRole)) {
+      return res.status(403).json({ error: `Permission denied. Required: ${roles.join(', ')}. Your role: ${userRole}` });
     }
 
     next();
