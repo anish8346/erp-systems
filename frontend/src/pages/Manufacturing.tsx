@@ -45,20 +45,25 @@ const Manufacturing = () => {
         api.get('/config/users'),
       ]);
       
-      // Extract data safely, checking for both old and new API formats
-      setMos(mosRes.data.mos || []);
-      setPagination(mosRes.data.pagination || { page: 1, limit: 20, totalPages: 1, totalItems: 0 });
+      // Aggressive safety checks for data structures
+      const mosData = mosRes.data?.mos || (Array.isArray(mosRes.data) ? mosRes.data : []);
+      const paginationData = mosRes.data?.pagination || { page: 1, limit: 20, totalPages: 1, totalItems: mosData.length };
       
-      const prodData = Array.isArray(productsRes.data) ? productsRes.data : (productsRes.data?.products || []);
+      setMos(mosData);
+      setPagination(paginationData);
+      
+      const prodData = productsRes.data?.products || (Array.isArray(productsRes.data) ? productsRes.data : []);
       setProducts(prodData);
       
-      setBoms(Array.isArray(bomsRes.data) ? bomsRes.data : (bomsRes.data?.boms || []));
+      const bomsData = bomsRes.data?.boms || (Array.isArray(bomsRes.data) ? bomsRes.data : []);
+      setBoms(bomsData);
       
-      const userData = Array.isArray(usersRes.data) ? usersRes.data : (usersRes.data?.users || []);
+      const userData = usersRes.data?.users || (Array.isArray(usersRes.data) ? usersRes.data : []);
       setUsers(userData);
     } catch (err) {
-      console.error("Fetch manufacturing data failed", err);
-      setErrorAlert({ title: "Connection Error", message: "Failed to load manufacturing data. Please check your connection." });
+      console.error(\"Detailed Fetch Error:\", err);
+      const msg = axios.isAxiosError(err) ? err.response?.data?.error || err.message : \"Network error\";
+      setErrorAlert({ title: \"Load Failed\", message: `Failed to load manufacturing data: ${msg}` });
     } finally {
       setLoading(false);
     }

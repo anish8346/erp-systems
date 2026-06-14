@@ -14,16 +14,14 @@ import { financeRouter } from './features/finance/routes/finance.routes.js';
 dotenv.config();
 
 const app = express();
-app.set('etag', false);
 
-// 1. FORCE NO-CACHE MIDDLEWARE (MUST BE AT TOP)
+// --- CRITICAL: Aggressive Cache Disabling (to solve 304 misconceptions) ---
+app.disable('etag'); 
 app.use((req, res, next) => {
-  req.headers['if-none-match'] = '';
-  req.headers['if-modified-since'] = '';
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
-  res.removeHeader('ETag');
+  res.setHeader('Surrogate-Control', 'no-store');
   next();
 });
 
@@ -35,6 +33,7 @@ app.use(cors({
   credentials: true,
   optionsSuccessStatus: 200
 }));
+
 app.use(express.json());
 
 // Routes
@@ -51,10 +50,13 @@ app.use('/api/users', userRouter);
 app.use('/api/vendors', vendorRouter);
 app.use('/api/finance', financeRouter);
 
+// Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Server is running' });
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Start Server
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`[Shiv ERP] Server running on port ${PORT}`);
+  console.log(`[Shiv ERP] Anti-Cache Middleware Active`);
 });
