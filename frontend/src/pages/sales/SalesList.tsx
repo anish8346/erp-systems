@@ -98,6 +98,7 @@ const SalesList = ({
               <th className="px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-100">Customer & Order</th>
               <th className="px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-100">Date</th>
               <th className="px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-100 text-right">Amount</th>
+              <th className="px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-100 text-center">Fulfillment</th>
               <th className="px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-100 text-center">Status</th>
               <th className="px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-100 text-right">Actions</th>
             </tr>
@@ -146,6 +147,28 @@ const SalesList = ({
                     </td>
                     <td className="px-6 py-4 text-right">
                         <span className="text-sm font-bold text-gray-900">₹{o.totalAmount.toLocaleString('en-IN')}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                        {(() => {
+                           const totalQty = o.orderLines?.reduce((sum, l) => sum + l.quantity, 0) || 0;
+                           const totalDelivered = o.orderLines?.reduce((sum, l) => sum + l.deliveredQty, 0) || 0;
+                           const percent = totalQty > 0 ? Math.round((totalDelivered / totalQty) * 100) : 0;
+                           
+                           return (
+                             <div className="flex flex-col gap-1 min-w-[80px]">
+                                <div className="flex justify-between text-[9px] font-black text-gray-400">
+                                    <span>{percent}%</span>
+                                    <span>{totalDelivered}/{totalQty}</span>
+                                </div>
+                                <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                                    <div 
+                                      className={`h-full transition-all duration-1000 ${percent === 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`}
+                                      style={{ width: `${percent}%` }}
+                                    ></div>
+                                </div>
+                             </div>
+                           );
+                        })()}
                     </td>
                     <td className="px-6 py-4 text-center">
                         <Badge variant={

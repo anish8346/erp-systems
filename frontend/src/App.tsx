@@ -18,7 +18,9 @@ import Finance from './pages/Finance';
 import Requests from './pages/Requests';
 import Vendors from './pages/Vendors';
 import LandingPage from './pages/LandingPage';
-import type { User } from './types';
+import { Toaster, toast } from 'react-hot-toast';
+import api from './services/api';
+import type { User, Product } from './types';
 
 function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
@@ -26,6 +28,50 @@ function App() {
     const saved = localStorage.getItem('user');
     return saved ? JSON.parse(saved) : null;
   });
+
+  const [lastAlerted, setLastAlerted] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!token || !user) return;
+    
+    const checkLowStock = async () => {
+        try {
+            const res = await api.get('/products/low-stock');
+            const lowStockItems = res.data as Product[];
+            
+            lowStockItems.forEach(item => {
+                if (!lastAlerted.has(item.id)) {
+                    toast.error(
+                        (t) => (
+                            <div className="flex flex-col gap-1">
+                                <span className="font-bold text-sm">Low Stock Warning!</span>
+                                <span className="text-xs opacity-90">{item.name} is at {item.qtyOnHand} units (Min: {item.minStock})</span>
+                                <button 
+                                    onClick={() => toast.dismiss(t.id)}
+                                    className="text-[10px] font-black uppercase mt-1 self-end hover:underline"
+                                >
+                                    Dismiss
+                                </button>
+                            </div>
+                        ),
+                        { duration: 6000, id: `stock-${item.id}` }
+                    );
+                    setLastAlerted(prev => {
+                        const next = new Set(prev);
+                        next.add(item.id);
+                        return next;
+                    });
+                }
+            });
+        } catch (err) {
+            console.error("Stock check failed", err);
+        }
+    };
+
+    checkLowStock();
+    const interval = setInterval(checkLowStock, 60000); // Every minute
+    return () => clearInterval(interval);
+  }, [token, user, lastAlerted]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -155,6 +201,7 @@ function App() {
            </div>
         </main>
       </div>
+      <Toaster position="top-right" />
     </Router>
   );
 }

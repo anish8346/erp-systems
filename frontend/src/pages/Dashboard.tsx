@@ -8,21 +8,19 @@ import type { SalesOrder, Product, ManufacturingOrder, StockLedger } from '../ty
 
 const COLORS = ['#8c7e6a', '#b08e48', '#10b981', '#ef4444', '#6366f1'];
 
-const processDailyData = (daily: any[]) => {
-  const map: Record<string, any> = {};
-  daily.forEach(d => {
-    if (!map[d.date]) map[d.date] = { date: d.date, Income: 0, Expense: 0 };
-    if (d.type === 'INCOME') map[d.date].Income += d.amount;
-    else map[d.date].Expense += d.amount;
-  });
-  return Object.values(map).sort((a: any, b: any) => a.date.localeCompare(b.date));
-};
+const processDailyData = (daily: any[]) => daily;
 
-const processCategoryData = (categories: any[]) => {
-  return categories.map(c => ({
-    name: c.category,
-    value: c.amount
-  }));
+const processCategoryData = (categories: any[]) => categories;
+
+const processWorkCenterData = (mos: ManufacturingOrder[]) => {
+    const map: Record<string, number> = {};
+    mos.filter(m => m.status !== 'DONE' && m.status !== 'CANCELLED').forEach(mo => {
+        (mo.WorkOrders || []).filter(wo => wo.status !== 'DONE').forEach(wo => {
+            const name = wo.workCenter?.name || wo.operationName || 'Unknown Unit';
+            map[name] = (map[name] || 0) + 1;
+        });
+    });
+    return Object.entries(map).map(([name, load]) => ({ name, load }));
 };
 
 const Dashboard = () => {
@@ -34,6 +32,7 @@ const Dashboard = () => {
     delayedOrders: 0,
   });
   const [chartData, setChartData] = useState<{ daily: any[], categories: any[] }>({ daily: [], categories: [] });
+  const [mfgLoad, setMfgLoad] = useState<{ name: string, load: number }[]>([]);
   const [recentLogs, setRecentLogs] = useState<StockLedger[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -72,6 +71,7 @@ const Dashboard = () => {
         });
         setRecentLogs(ledgerData.slice(0, 5));
         setChartData(chartsRes.data);
+        setMfgLoad(processWorkCenterData(mosData));
       } catch (err) {
         console.error("Dashboard data fetch failed", err);
       } finally {
@@ -148,6 +148,25 @@ const Dashboard = () => {
               </div>
            </Card>
         </div>
+      )}
+
+      {/* Manufacturing Analytics */}
+      {['OWNER', 'MFG', 'ADMIN'].includes(user.role) && mfgLoad.length > 0 && (
+        <Card className="p-6" title="Work Center Workload" subtitle="Number of active tasks per unit">
+            <div className="h-[250px] mt-6">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={mfgLoad} layout="vertical" margin={{ left: 30, right: 30 }}>
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
+                        <XAxis type="number" fontSize={10} fontWeight="bold" tick={{fill: '#8c7e6a'}} />
+                        <YAxis dataKey="name" type="category" fontSize={10} fontWeight="bold" tick={{fill: '#8c7e6a'}} width={120} />
+                        <Tooltip 
+                            contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}}
+                        />
+                        <Bar dataKey="load" name="Pending Tasks" fill="#b08e48" radius={[0, 4, 4, 0]} barSize={20} />
+                    </BarChart>
+                </ResponsiveContainer>
+            </div>
+        </Card>
       )}
       
       {/* KPI Section */}

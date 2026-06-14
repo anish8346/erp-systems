@@ -654,9 +654,29 @@ const Purchase = () => {
               </div>
 
               <div className="flex flex-col items-end gap-3">
-                <p className="text-2xl font-bold text-luxury-brown">₹{o.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
-                <div className="flex gap-2">
-                    <Button variant="secondary" onClick={() => handleDownload(o.id)} size="sm">
+              <p className="text-2xl font-bold text-luxury-brown">₹{o.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+              <div className="flex flex-col items-end gap-1.5 min-w-[120px]">
+                  {(() => {
+                      const totalQty = o.orderLines?.reduce((sum, l) => sum + l.quantity, 0) || 0;
+                      const totalReceived = o.orderLines?.reduce((sum, l) => sum + (l.receivedQty || 0), 0) || 0;
+                      const percent = totalQty > 0 ? Math.round((totalReceived / totalQty) * 100) : 0;
+                      return (
+                         <>
+                          <div className="flex justify-between w-full text-[10px] font-black text-warm-taupe/60 px-0.5">
+                              <span>FULFILLMENT</span>
+                              <span>{percent}%</span>
+                          </div>
+                          <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                              <div 
+                                  className={`h-full transition-all duration-1000 ${percent === 100 ? 'bg-emerald-500' : 'bg-orange-500'}`}
+                                  style={{ width: `${percent}%` }}
+                              ></div>
+                          </div>
+                         </>
+                      );
+                  })()}
+              </div>
+              <div className="flex gap-2">                    <Button variant="secondary" onClick={() => handleDownload(o.id)} size="sm">
                         <Download className="w-4 h-4 mr-1" /> PO
                     </Button>
                     {o.status === 'DRAFT' && (
