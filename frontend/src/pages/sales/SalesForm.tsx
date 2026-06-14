@@ -119,26 +119,27 @@ const SalesForm = ({
               </p>
             )}
           </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Input 
-            label="Quantity *" 
-            type="number"
-            min="1"
-            value={newOrder.quantity}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewOrder({...newOrder, quantity: Number(e.target.value)})}
-            required
-          />
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-gray-700 ml-1">Tax (GST) *</label>
-            <select 
-              className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-luxury-brown/10 focus:border-luxury-brown outline-none transition-all bg-white text-sm font-medium"
-              value={newOrder.taxRate || 0}
-              onChange={(e) => setNewOrder({...newOrder, taxRate: Number(e.target.value)})}
-              required
-            >
-              <option value={0}>0% (Tax Exempt)</option>
-              <option value={18}>18% (Standard GST)</option>
-            </select>
+          <div className="flex flex-col gap-4">
+            <Input 
+                label="Quantity *" 
+                type="number"
+                min="1"
+                value={newOrder.quantity}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewOrder({...newOrder, quantity: Number(e.target.value)})}
+                required
+            />
+            <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-gray-700 ml-1">Tax (GST) *</label>
+                <select 
+                className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-luxury-brown/10 focus:border-luxury-brown outline-none transition-all bg-white text-sm font-medium"
+                value={newOrder.taxRate || 0}
+                onChange={(e) => setNewOrder({...newOrder, taxRate: Number(e.target.value)})}
+                required
+                >
+                <option value={0}>0% (Tax Exempt)</option>
+                <option value={18}>18% (Standard GST)</option>
+                </select>
+            </div>
           </div>
         </div>
 
