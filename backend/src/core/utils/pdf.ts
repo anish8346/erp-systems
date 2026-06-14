@@ -1,6 +1,5 @@
 
 import PDFDocument from 'pdfkit';
-import { SalesOrder, PurchaseOrder, SalesOrderLine, PurchaseOrderLine, Product } from '../types/index.js';
 
 export class PDFService {
   static async generateSalesInvoice(so: any): Promise<Buffer> {
@@ -53,7 +52,7 @@ export class PDFService {
       const subtotal = so.orderLines.reduce((acc: any, l: any) => acc + (l.quantity * l.price), 0);
       doc.fillColor('#444444').fontSize(10);
       doc.text(`Subtotal: ₹${subtotal.toLocaleString()}`, 350, y + 25);
-      doc.text(`GST (${so.taxRate}%): ₹${so.taxAmount.toLocaleString()}`, 350, y + 40);
+      doc.text(`GST (${so.taxRate || 0}%): ₹${(so.taxAmount || 0).toLocaleString()}`, 350, y + 40);
       
       doc.fontSize(15).text(`Grand Total: ₹${so.totalAmount.toLocaleString()}`, 350, y + 60, { bold: true });
 
@@ -107,7 +106,7 @@ export class PDFService {
       const subtotal = po.orderLines.reduce((acc: any, l: any) => acc + (l.quantity * l.price), 0);
       doc.fillColor('#444444').fontSize(10);
       doc.text(`Subtotal: ₹${subtotal.toLocaleString()}`, 350, y + 25);
-      doc.text(`GST (${po.taxRate}%): ₹${po.taxAmount.toLocaleString()}`, 350, y + 40);
+      doc.text(`GST (${po.taxRate || 0}%): ₹${(po.taxAmount || 0).toLocaleString()}`, 350, y + 40);
       
       doc.fontSize(15).text(`Total Amount: ₹${po.totalAmount.toLocaleString()}`, 350, y + 60, { bold: true });
 
