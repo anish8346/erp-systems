@@ -9,7 +9,7 @@ import { bomRouter, manufacturingRouter } from './features/operations/routes/ope
 import { salesRouter, customerRouter } from './features/sales/routes/sales.routes.js';
 import { purchaseRouter, vendorRouter } from './features/procurement/routes/procurement.routes.js';
 import { configRouter, requestRouter, userRouter } from './features/admin/routes/admin.routes.js';
-import { financeRouter } from './features/analytics/routes/analytics.routes.js';
+import { financeRouter } from './features/finance/routes/finance.routes.js';
 
 dotenv.config();
 

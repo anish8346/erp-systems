@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Package, ShoppingCart, Truck, Factory, History, ListTree, LogOut, Settings, Inbox, ShieldAlert, UserPlus, Sofa } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, Truck, Factory, History, ListTree, LogOut, Settings, Inbox, ShieldAlert, UserPlus, Sofa, Wallet } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
 import Boms from './pages/Boms';
@@ -14,6 +14,7 @@ import AuditLogs from './pages/AuditLogs';
 import Config from './pages/Config';
 import Users from './pages/Users';
 import Customers from './pages/Customers';
+import Finance from './pages/Finance';
 import Requests from './pages/Requests';
 import Vendors from './pages/Vendors';
 import LandingPage from './pages/LandingPage';
@@ -102,6 +103,7 @@ function App() {
                 <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-white/30 mb-2">System</p>
                 <NavItem to="/dashboard/requests" icon={<Inbox className="w-4 h-4" />} label="Access Requests" />
                 <NavItem to="/dashboard/users" icon={<UserPlus className="w-4 h-4" />} label="Staff Management" />
+                <NavItem to="/dashboard/finance" icon={<Wallet className="w-4 h-4" />} label="Financial Ledger" />
                 <NavItem to="/dashboard/audit-logs" icon={<ShieldAlert className="w-4 h-4" />} label="Audit Logs" />
                 <NavItem to="/dashboard/config" icon={<Settings className="w-4 h-4" />} label="Configuration" />
               </div>
@@ -139,6 +141,7 @@ function App() {
                   <Route path="sales" element={<Sales />} />
                   <Route path="purchase" element={<Purchase />} />
                   <Route path="vendors" element={<Vendors />} />
+                  <Route path="finance" element={<Finance />} />
                   <Route path="manufacturing" element={<Manufacturing />} />
                   <Route path="ledger" element={<StockLedger />} />
                   <Route path="requests" element={<Requests />} />

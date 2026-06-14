@@ -234,6 +234,18 @@ model AuditLog {
   user       User     @relation(fields: [userId], references: [id])
 }
 
+model FinanceRecord {
+  id          String   @id @default(uuid())
+  type        String   // INCOME, EXPENSE
+  category    String   // SALES, PURCHASE, OTHER
+  amount      Float
+  referenceId String?  // ID of SalesOrder or PurchaseOrder
+  description String?
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 model AccessRequest {
   id        String   @id @default(uuid())
   name      String
