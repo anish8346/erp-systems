@@ -41,6 +41,7 @@ const Sales = () => {
     productId: '',
     quantity: 1,
     customerId: undefined as string | undefined,
+    taxRate: 0,
   });
 
   const [errorAlert, setErrorAlert] = useState<{title: string, message: string} | null>(null);
@@ -60,13 +61,16 @@ const Sales = () => {
         api.get('/config/users'),
       ]);
       
-      setOrders(ordersRes.data.orders);
-      setPagination(ordersRes.data.pagination);
+      const ordersData = ordersRes.data?.orders || [];
+      const paginationData = ordersRes.data?.pagination || { page: 1, limit: 20, totalPages: 1, totalItems: ordersData.length };
+
+      setOrders(ordersData);
+      setPagination(paginationData);
       
-      const prodData = Array.isArray(productsRes.data) ? productsRes.data : (productsRes.data?.products || []);
+      const prodData = productsRes.data?.products || (Array.isArray(productsRes.data) ? productsRes.data : []);
       setProducts(prodData);
       
-      const userData = Array.isArray(usersRes.data) ? usersRes.data : (usersRes.data?.users || []);
+      const userData = usersRes.data?.users || (Array.isArray(usersRes.data) ? usersRes.data : []);
       setUsers(userData);
     } catch (err) {
       console.error("Fetch sales data failed", err);
