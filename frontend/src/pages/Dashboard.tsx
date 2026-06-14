@@ -102,7 +102,7 @@ const Dashboard = () => {
            <Card className="lg:col-span-2 p-6" title="Cash Flow (Last 30 Days)" subtitle="Daily comparison of Income vs. Expenses">
               <div className="h-[300px] mt-6">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={processDailyData(chartData.daily)}>
+                    <BarChart data={chartData.daily}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                         <XAxis dataKey="date" fontSize={10} fontWeight="bold" tick={{fill: '#8c7e6a'}} />
                         <YAxis fontSize={10} fontWeight="bold" tick={{fill: '#8c7e6a'}} tickFormatter={(v) => `₹${v/1000}k`} />
@@ -123,18 +123,26 @@ const Dashboard = () => {
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                         <Pie
-                            data={processCategoryData(chartData.categories)}
+                            data={chartData.categories.map(c => ({
+                                ...c,
+                                name: c.name === 'SALES' ? 'Sales Revenue' : 
+                                      c.name === 'PURCHASE' ? 'Procurement' : 
+                                      c.name === 'OTHER' ? 'Other Expenses' : c.name
+                            }))}
                             innerRadius={60}
                             outerRadius={80}
                             paddingAngle={5}
                             dataKey="value"
                         >
-                            {processCategoryData(chartData.categories).map((entry: any, index: number) => (
+                            {chartData.categories.map((entry: any, index: number) => (
                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                         </Pie>
-                        <Tooltip />
-                        <Legend layout="vertical" align="right" verticalAlign="middle" iconType="circle" />
+                        <Tooltip 
+                            formatter={(value) => [`₹${Number(value).toLocaleString()}`, 'Amount']}
+                            contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}}
+                        />
+                        <Legend layout="horizontal" align="center" verticalAlign="bottom" iconType="circle" />
                     </PieChart>
                 </ResponsiveContainer>
               </div>
