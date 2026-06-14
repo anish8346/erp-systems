@@ -1,3 +1,4 @@
+import prisma from '../../../core/database/prisma.js';
 import { salesRepository } from '../repositories/sales.repository.js';
 import { logActivity } from '../../../core/utils/logger.js';
 import { AutomationService } from '../../../core/utils/automation.js';
