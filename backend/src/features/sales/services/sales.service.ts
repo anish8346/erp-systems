@@ -16,10 +16,10 @@ export const createSalesOrder = async (data: CreateSalesOrderData & { customerId
   const so = await salesRepository.createSalesOrder({ 
     customerName, 
     customerAddress, 
-    salesPersonId, 
+    salesPersonId: salesPersonId && salesPersonId.trim() !== '' ? salesPersonId : undefined, 
     orderLines, 
     totalAmount,
-    customerId
+    customerId: customerId && customerId.trim() !== '' ? customerId : undefined
   });
 
   if (userId) {

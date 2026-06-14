@@ -25,7 +25,7 @@ export class ProcurementRepository {
         vendorId,
         vendorName,
         vendorAddress,
-        responsiblePersonId,
+        responsiblePersonId: responsiblePersonId && responsiblePersonId.trim() !== '' ? responsiblePersonId : undefined,
         status: 'DRAFT',
         totalAmount,
         orderLines: {

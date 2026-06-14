@@ -29,7 +29,7 @@ export class OperationsRepository {
         productId,
         quantity,
         bomId,
-        assigneeId,
+        assigneeId: assigneeId && assigneeId.trim() !== '' ? assigneeId : undefined,
         status: 'DRAFT',
         components: {
           create: components?.map(c => ({
