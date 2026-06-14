@@ -30,17 +30,20 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
 export const authorize = (roles: string[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
+      console.error('[RBAC] No user found in request');
       return res.status(401).json({ error: 'Authentication required.' });
     }
 
     const userRole = req.user.role?.toUpperCase();
+    const requiredRoles = roles.map(r => r.toUpperCase());
 
     if (userRole === 'ADMIN' || userRole === 'OWNER') {
         return next(); 
     }
 
-    if (!roles.map(r => r.toUpperCase()).includes(userRole)) {
-      return res.status(403).json({ error: `Permission denied. Required: ${roles.join(', ')}. Your role: ${userRole}` });
+    if (!requiredRoles.includes(userRole)) {
+      console.warn(`[RBAC] Access denied for role: ${userRole}. Required one of: ${requiredRoles.join(', ')}`);
+      return res.status(403).json({ error: `Permission denied. Your role: ${userRole}` });
     }
 
     next();
