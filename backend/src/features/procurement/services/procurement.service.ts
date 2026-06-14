@@ -1,6 +1,7 @@
 import prisma from '../../../core/database/prisma.js';
 import { logActivity } from '../../../core/utils/logger.js';
 import { ProcurementRepository } from '../repositories/procurement.repository.js';
+import { AutomationService } from '../../../core/utils/automation.js';
 
 interface PurchaseOrderLineInput {
   productId: string;
@@ -102,7 +103,11 @@ export class ProcurementService {
         data: { totalAmount }
       });
 
-      await logActivity(userId, 'UPDATE_PRICE', 'PURCHASE_ORDER', id, `Updated price for ${line.productId} to ₹${newPrice}`);
+      // AUTOMATION: Update product cost price
+      await tx.product.update({
+        where: { id: line.productId },
+        data: { costPrice: newPrice }
+      });
 
       return await tx.purchaseOrder.findUnique({
         where: { id },
@@ -114,6 +119,16 @@ export class ProcurementService {
         }
       });
     });
+
+    // Recalculate BoMs after transaction success
+    const lineObj = po?.orderLines.find(l => l.id === lineId);
+    if (lineObj) {
+        await AutomationService.recalculateBoMCosts(lineObj.productId);
+    }
+
+    await logActivity(userId, 'UPDATE_PRICE', 'PURCHASE_ORDER', id, `Updated negotiated price for a line item to ₹${newPrice}`);
+    
+    return ProcurementRepository.findPurchaseOrderById(id);
   }
 
   static async cancelPurchaseOrder(id: string, userId?: string) {
@@ -190,7 +205,24 @@ export class ProcurementService {
           totalAmount
         },
       });
+
+      // AUTOMATION: Update product cost price on receipt
+      for (const line of po.orderLines) {
+        const itemReceived = items?.find((i: ReceiveItemInput) => i.lineId === line.id);
+        if (itemReceived && Number(itemReceived.quantity) > 0) {
+          await tx.product.update({
+            where: { id: line.productId },
+            data: { costPrice: line.price }
+          });
+        }
+      }
     });
+
+    // Recalculate BoMs and check replenishment after transaction
+    for (const line of po.orderLines) {
+      await AutomationService.recalculateBoMCosts(line.productId);
+      await AutomationService.triggerSmartReplenishment(line.productId, userId);
+    }
 
     if (userId) {
         await logActivity(userId, 'RECEIVE', 'PURCHASE_ORDER', id, `Processed receipt for procurement order ${id}`);

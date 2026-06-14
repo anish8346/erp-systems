@@ -26,6 +26,8 @@ const Products = () => {
     salesPrice: 0,
     costPrice: 0,
     qtyOnHand: 0,
+    minStock: 0,
+    maxStock: 0,
     procurementType: 'MTS' as ProcurementType,
     supplyMethod: 'PURCHASE' as SupplyMethod,
     vendorId: '',
@@ -169,7 +171,8 @@ const Products = () => {
               <tr className="bg-gray-50/30">
                 <th className="px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-100">Product & Ref</th>
                 <th className="px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-100">Vendor / Contact</th>
-                <th className="px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-100">Procurement</th>
+                <th className="px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-100 text-center">Procurement</th>
+                <th className="px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-100 text-center">Safety Stock</th>
                 <th className="px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-100 text-right">Price</th>
                 <th className="px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-100 text-center">Stock Levels</th>
                 <th className="px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-100 text-right">Actions</th>
@@ -204,6 +207,12 @@ const Products = () => {
                         {p.procurementType === 'MTO' ? 'ON DEMAND' : 'MAKE TO STOCK'}
                       </span>
                       <span className="text-[9px] text-gray-400 font-medium uppercase ml-1 tracking-tight">{p.supplyMethod}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <div className="flex flex-col items-center">
+                      <span className="text-[9px] font-bold text-gray-400 uppercase">Min / Max</span>
+                      <span className="text-xs font-bold text-gray-600">{p.minStock} / {p.maxStock}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right">
@@ -425,6 +434,29 @@ const Products = () => {
             required
           />
 
+          <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100 space-y-4">
+            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Automation Rules</p>
+            <div className="grid grid-cols-2 gap-4">
+                <Input 
+                    label="Min Stock (Reorder at)" 
+                    type="number"
+                    value={newProduct.minStock}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewProduct({...newProduct, minStock: Number(e.target.value)})}
+                    required
+                />
+                <Input 
+                    label="Max Stock (Target)" 
+                    type="number"
+                    value={newProduct.maxStock}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewProduct({...newProduct, maxStock: Number(e.target.value)})}
+                    required
+                />
+            </div>
+            <p className="text-[10px] text-blue-500 font-medium leading-tight">
+                When availability falls below Min Stock, the system will automatically create a draft Purchase Order to reach Max Stock.
+            </p>
+          </div>
+
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button variant="secondary" type="button" onClick={() => setShowModal(false)}>Cancel</Button>
             <Button type="submit">Create Product</Button>
@@ -459,6 +491,26 @@ const Products = () => {
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditingProduct({...editingProduct, costPrice: Number(e.target.value)})}
                 required
               />
+            </div>
+
+            <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100 space-y-4">
+                <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Automation Rules</p>
+                <div className="grid grid-cols-2 gap-4">
+                    <Input 
+                        label="Min Stock (Reorder at)" 
+                        type="number"
+                        value={editingProduct.minStock}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditingProduct({...editingProduct, minStock: Number(e.target.value)})}
+                        required
+                    />
+                    <Input 
+                        label="Max Stock (Target)" 
+                        type="number"
+                        value={editingProduct.maxStock}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditingProduct({...editingProduct, maxStock: Number(e.target.value)})}
+                        required
+                    />
+                </div>
             </div>
 
             <div className="p-4 bg-faded-white rounded-xl border border-soft-cream space-y-4">

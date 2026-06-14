@@ -1,6 +1,7 @@
 import prisma from '../../../core/database/prisma.js';
 import { logActivity } from '../../../core/utils/logger.js';
 import { OperationsRepository } from '../repositories/operations.repository.js';
+import { AutomationService } from '../../../core/utils/automation.js';
 import type { MOStatus, WOStatus } from '../../../core/types/index.js';
 
 export class OperationsService {
@@ -112,6 +113,11 @@ export class OperationsService {
         data: { status: 'DONE' }
       });
     });
+
+    // AUTOMATION: Check for replenishment on all consumed components
+    for (const comp of (mo.components || [])) {
+        await AutomationService.triggerSmartReplenishment(comp.productId, userId);
+    }
 
     if (userId) {
       await logActivity(userId, 'PRODUCE', 'MANUFACTURING_ORDER', id, `Produced ${mo.quantity} units of ${mo.product.name}`);

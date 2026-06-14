@@ -53,6 +53,8 @@ model Product {
   costPrice       Float
   qtyOnHand       Float    @default(0)
   qtyReserved     Float    @default(0)
+  minStock        Float    @default(0) // Minimum threshold for replenishment
+  maxStock        Float    @default(0) // Target stock level
   procurementType String   // MTS, MTO
   supplyMethod    String   // MANUFACTURE, PURCHASE
   vendorId        String?

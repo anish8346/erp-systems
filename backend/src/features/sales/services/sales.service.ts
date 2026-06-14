@@ -1,5 +1,6 @@
 import { salesRepository } from '../repositories/sales.repository.js';
 import { logActivity } from '../../../core/utils/logger.js';
+import { AutomationService } from '../../../core/utils/automation.js';
 import type { CreateSalesOrderData, CreateSalesOrderLine, DeliverItem } from '../../../core/types/index.js';
 
 export const createSalesOrder = async (data: CreateSalesOrderData & { customerId?: string }, userId?: string) => {
@@ -95,6 +96,14 @@ export const deliverSalesOrder = async (id: string, items: DeliverItem[], userId
   }
 
   await salesRepository.deliverOrderTransaction(so as any, items);
+
+  // AUTOMATION: Trigger replenishment check after stock decrement
+  for (const item of items) {
+    const line = so.orderLines.find(l => l.id === item.lineId);
+    if (line) {
+        await AutomationService.triggerSmartReplenishment(line.productId, userId);
+    }
+  }
 
   if (userId) {
       await logActivity(userId, 'DELIVER', 'SALES_ORDER', id, `Processed dispatch for order ${so.customerName}`);
