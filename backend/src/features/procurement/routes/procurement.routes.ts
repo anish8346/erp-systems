@@ -4,7 +4,7 @@ import { authenticate, authorize } from '../../../core/middlewares/authMiddlewar
 
 export const purchaseRouter = Router();
 purchaseRouter.post('/', authenticate, authorize(['PURCHASE', 'INVENTORY']), ProcurementController.createPurchaseOrder);
-purchaseRouter.get('/', authenticate, ProcurementController.getPurchaseOrders);
+purchaseRouter.get('/', authenticate, authorize(['PURCHASE', 'INVENTORY', 'MFG', 'SALES']), ProcurementController.getPurchaseOrders);
 purchaseRouter.post('/:id/confirm', authenticate, authorize(['PURCHASE']), ProcurementController.confirmPurchaseOrder);
 purchaseRouter.post('/:id/negotiate', authenticate, authorize(['PURCHASE']), ProcurementController.startNegotiation);
 purchaseRouter.post('/:id/comment', authenticate, authorize(['PURCHASE']), ProcurementController.addComment);
@@ -15,7 +15,7 @@ purchaseRouter.get('/:id/download', authenticate, ProcurementController.download
 
 export const vendorRouter = Router();
 vendorRouter.post('/', authenticate, authorize(['PURCHASE', 'INVENTORY']), ProcurementController.createVendor);
-vendorRouter.get('/', authenticate, ProcurementController.getVendors);
+vendorRouter.get('/', authenticate, authorize(['PURCHASE', 'INVENTORY', 'MFG', 'SALES']), ProcurementController.getVendors);
 vendorRouter.put('/:id', authenticate, authorize(['PURCHASE', 'INVENTORY']), ProcurementController.updateVendor);
 vendorRouter.delete('/:id', authenticate, authorize([]), async (req, res) => {
     // Basic delete for vendors, only admin/owner

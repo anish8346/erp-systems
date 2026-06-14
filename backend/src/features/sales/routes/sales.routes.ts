@@ -6,8 +6,8 @@ import { authenticate, authorize } from '../../../core/middlewares/authMiddlewar
 export const salesRouter = Router();
 
 salesRouter.post('/', authenticate, authorize(['SALES']), createSalesOrder);
-salesRouter.get('/', authenticate, getSalesOrders);
-salesRouter.get('/:id', authenticate, async (req, res, next) => {
+salesRouter.get('/', authenticate, authorize(['SALES', 'INVENTORY', 'MFG', 'PURCHASE']), getSalesOrders);
+salesRouter.get('/:id', authenticate, authorize(['SALES', 'INVENTORY', 'MFG', 'PURCHASE']), async (req, res, next) => {
     // Helper to get single SO which was missing from basic routes
     const { getSalesOrderById } = await import('../services/sales.service.js');
     try {

@@ -6,8 +6,8 @@ import { authenticate, authorize } from '../../../core/middlewares/authMiddlewar
 export const productRouter = Router();
 
 productRouter.post('/', authenticate, authorize(['INVENTORY', 'MFG']), createProduct);
-productRouter.get('/', authenticate, getProducts);
-productRouter.get('/low-stock', authenticate, async (req, res) => {
+productRouter.get('/', authenticate, authorize(['INVENTORY', 'MFG', 'SALES', 'PURCHASE']), getProducts);
+productRouter.get('/low-stock', authenticate, authorize(['INVENTORY', 'MFG', 'SALES', 'PURCHASE']), async (req, res) => {
     try {
         // Fetch all with minStock > 0 and filter in service
         const products = await prisma.product.findMany({ where: { minStock: { gt: 0 } } });
@@ -17,8 +17,8 @@ productRouter.get('/low-stock', authenticate, async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch low stock alert.' });
     }
 });
-productRouter.get('/ledger', authenticate, getStockLedger);
-productRouter.get('/:id', authenticate, getProductById);
+productRouter.get('/ledger', authenticate, authorize(['INVENTORY', 'MFG', 'SALES', 'PURCHASE']), getStockLedger);
+productRouter.get('/:id', authenticate, authorize(['INVENTORY', 'MFG', 'SALES', 'PURCHASE']), getProductById);
 productRouter.put('/:id', authenticate, authorize(['INVENTORY', 'MFG']), updateProduct);
 productRouter.delete('/:id', authenticate, authorize([]), deleteProduct); 
 productRouter.patch('/:id/adjust-stock', authenticate, authorize(['INVENTORY', 'MFG']), adjustStock);
