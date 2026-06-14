@@ -201,6 +201,20 @@ const Purchase = () => {
       }
   };
 
+  const handleDownload = async (id: string) => {
+    try {
+        const response = await api.get(`/purchase/${id}/download`, { responseType: 'blob' });
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `po-${id.slice(0,8)}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+    } catch (err) {
+        alert("Failed to download PO");
+    }
+  };
+
   const openReceiveModal = (order: PurchaseOrder) => {
     setSelectedOrder(order);
     const initialQtys: Record<string, number> = {};
@@ -408,6 +422,7 @@ const Purchase = () => {
                     </div>
                 </div>
                 <div className="flex gap-3">
+                    <Button variant="secondary" onClick={() => handleDownload(negotiationOrder.id)}><Download className="w-4 h-4 mr-2" /> Download PO</Button>
                     <Button variant="secondary" onClick={() => { setOrderToCancel(negotiationOrder.id); setShowCancelConfirm(true); }}>Cancel Order</Button>
                     <Button variant="primary" onClick={() => { handleConfirm(negotiationOrder.id); setView('list'); }}>Confirm & Close</Button>
                 </div>
@@ -613,6 +628,9 @@ const Purchase = () => {
               <div className="flex flex-col items-end gap-3">
                 <p className="text-2xl font-bold text-luxury-brown">₹{o.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                 <div className="flex gap-2">
+                    <Button variant="secondary" onClick={() => handleDownload(o.id)} size="sm">
+                        <Download className="w-4 h-4 mr-1" /> PO
+                    </Button>
                     {o.status === 'DRAFT' && (
                         <>
                             <Button variant="secondary" onClick={() => { setOrderToCancel(o.id); setShowCancelConfirm(true); }} size="sm">

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   ArrowLeft, CheckCircle, Truck, XCircle, Package, User as UserIcon, 
-  MapPin, Clock, MessageSquare, Edit3, Save, TrendingDown, History 
+  MapPin, Clock, MessageSquare, Edit3, Save, TrendingDown, History, Download 
 } from 'lucide-react';
 import { Button, Card, Badge } from '../../components/UI';
 import type { SalesOrder, SalesOrderLine, SalesOrderComment } from '../../types';
@@ -46,6 +46,20 @@ const SalesDetail = ({
       setEditingPriceLineId(null);
   };
 
+  const handleDownload = async () => {
+    try {
+        const response = await api.get(`/sales/${currentOrder.id}/download`, { responseType: 'blob' });
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `invoice-${currentOrder.id.slice(0,8)}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+    } catch (err) {
+        alert("Failed to download invoice");
+    }
+  };
+
   if (view === 'negotiation') {
       return (
           <div className="space-y-6 animate-in slide-in-from-right duration-300">
@@ -60,6 +74,7 @@ const SalesDetail = ({
                     </div>
                 </div>
                 <div className="flex gap-3">
+                    <Button variant="secondary" onClick={handleDownload}><Download className="w-4 h-4 mr-2" /> Invoice</Button>
                     <Button variant="danger" onClick={() => onCancel(currentOrder.id)}>Cancel Order</Button>
                     <Button onClick={() => { onConfirm(currentOrder.id); onBack(); }}>Confirm & Close</Button>
                 </div>
@@ -180,6 +195,9 @@ const SalesDetail = ({
           <ArrowLeft className="w-4 h-4 mr-2" /> Back to list
         </Button>
         <div className="flex gap-3">
+           <Button variant="secondary" onClick={handleDownload}>
+             <Download className="w-4 h-4 mr-2" /> Download Invoice
+           </Button>
            {(currentOrder.status === 'DRAFT' || currentOrder.status === 'NEGOTIATION') && (
              <>
                <Button variant="danger" onClick={() => onCancel(currentOrder.id)}>

@@ -1,6 +1,7 @@
 import type { Response } from 'express';
 import type { AuthRequest } from '../../../core/middlewares/authMiddleware.js';
 import * as salesService from '../services/sales.service.js';
+import { PDFService } from '../../../core/utils/pdf.js';
 
 export const createSalesOrder = async (req: AuthRequest, res: Response) => {
   try {
@@ -86,6 +87,21 @@ export const cancelOrder = async (req: AuthRequest, res: Response) => {
   try {
     const so = await salesService.cancelSalesOrder(req.params.id, req.user?.id);
     res.json(so);
+  } catch (error: unknown) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+};
+
+export const downloadInvoice = async (req: AuthRequest, res: Response) => {
+  try {
+    const so = await salesService.getSalesOrderById(req.params.id);
+    if (!so) throw new Error('Sales Order not found');
+    
+    const buffer = await PDFService.generateSalesInvoice(so);
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=invoice-${so.id.slice(0,8)}.pdf`);
+    res.send(buffer);
   } catch (error: unknown) {
     res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
   }

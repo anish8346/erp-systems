@@ -230,6 +230,10 @@ export class ProcurementService {
     return await ProcurementRepository.getPurchaseOrders();
   }
 
+  static async getPurchaseOrderById(id: string) {
+    return await ProcurementRepository.findPurchaseOrderById(id);
+  }
+
   static async createVendor(data: { name: string, email?: string, phone?: string, address?: string }, userId?: string) {
     const vendor = await ProcurementRepository.createVendor(data);
 

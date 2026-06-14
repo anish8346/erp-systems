@@ -212,3 +212,7 @@ export const getSalesOrders = async (filters: {
 }) => {
   return await salesRepository.findAllSalesOrders(filters);
 };
+
+export const getSalesOrderById = async (id: string) => {
+  return await salesRepository.findSalesOrderById(id);
+};

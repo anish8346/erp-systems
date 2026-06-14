@@ -13,6 +13,7 @@ salesRouter.post('/:id/comment', authenticate, addComment);
 salesRouter.patch('/:id/line/:lineId', authenticate, updateLinePrice);
 salesRouter.post('/:id/deliver', authenticate, deliverOrder);
 salesRouter.post('/:id/cancel', authenticate, cancelOrder);
+salesRouter.get('/:id/download', authenticate, downloadInvoice);
 
 export const customerRouter = Router();
 customerRouter.post('/', authenticate, CustomerController.createCustomer);

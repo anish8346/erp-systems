@@ -1,6 +1,7 @@
 import type { Response, Request } from 'express';
 import type { AuthRequest } from '../../../core/middlewares/authMiddleware.js';
 import { ProcurementService } from '../services/procurement.service.js';
+import { PDFService } from '../../../core/utils/pdf.js';
 
 export class ProcurementController {
   static async createPurchaseOrder(req: AuthRequest, res: Response) {
@@ -92,7 +93,22 @@ export class ProcurementController {
     }
   }
 
-  static async getPurchaseOrders(req: Request, res: Response) {
+  static async downloadPO(req: AuthRequest, res: Response) {
+    try {
+      const po = await ProcurementService.getPurchaseOrderById(req.params.id);
+      if (!po) throw new Error('Purchase Order not found');
+
+      const buffer = await PDFService.generatePurchaseOrder(po);
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=po-${po.id.slice(0,8)}.pdf`);
+      res.send(buffer);
+    } catch (error: unknown) {
+      res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
+  static async getPurchaseOrders(req: AuthRequest, res: Response) {
     try {
       const orders = await ProcurementService.getPurchaseOrders();
       res.json(orders);

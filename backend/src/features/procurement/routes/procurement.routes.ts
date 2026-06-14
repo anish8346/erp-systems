@@ -11,6 +11,7 @@ purchaseRouter.post('/:id/comment', authenticate, ProcurementController.addComme
 purchaseRouter.patch('/:id/line/:lineId', authenticate, ProcurementController.updateLinePrice);
 purchaseRouter.post('/:id/cancel', authenticate, ProcurementController.cancelPurchaseOrder);
 purchaseRouter.post('/:id/receive', authenticate, ProcurementController.receivePurchaseOrder);
+purchaseRouter.get('/:id/download', authenticate, ProcurementController.downloadPO);
 
 export const vendorRouter = Router();
 vendorRouter.post('/', authenticate, ProcurementController.createVendor);
