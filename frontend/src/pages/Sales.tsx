@@ -199,6 +199,34 @@ const Sales = () => {
     setView('detail');
   };
 
+  const handleStartNegotiation = async (id: string) => {
+    try {
+      await api.post(`/sales/${id}/negotiate`);
+      fetchData(pagination.page);
+      refreshCurrentOrder(id);
+    } catch (err: any) {
+      setErrorAlert({ title: "Negotiation Failed", message: err.response?.data?.error || "Failed to start bargaining" });
+    }
+  };
+
+  const handleAddComment = async (id: string, text: string) => {
+    try {
+      const res = await api.post(`/sales/${id}/comment`, { text });
+      setCurrentOrder(res.data);
+    } catch (err: any) {
+      alert("Failed to add comment");
+    }
+  };
+
+  const handleUpdatePrice = async (id: string, lineId: string, price: number) => {
+    try {
+      const res = await api.patch(`/sales/${id}/line/${lineId}`, { price });
+      setCurrentOrder(res.data);
+    } catch (err: any) {
+      alert("Failed to update price");
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-10">
       {view === 'list' ? (
@@ -243,6 +271,9 @@ const Sales = () => {
           onConfirm={handleConfirm}
           onDeliver={openDeliverModal}
           onCancel={(id) => { setOrderToCancel(id); setShowCancelConfirm(true); }}
+          onStartNegotiation={handleStartNegotiation}
+          onAddComment={handleAddComment}
+          onUpdatePrice={handleUpdatePrice}
         />
       )}
 

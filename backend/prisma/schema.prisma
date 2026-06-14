@@ -22,6 +22,7 @@ model User {
   ManufacturingOrder ManufacturingOrder[] @relation("UserToMO")
   PurchaseOrder PurchaseOrder[] @relation("ResponsiblePerson")
   PurchaseOrderComment PurchaseOrderComment[]
+  SalesOrderComment SalesOrderComment[]
 }
 
 model Customer {
@@ -73,18 +74,19 @@ model Product {
 }
 
 model SalesOrder {
-  id              String           @id @default(uuid())
+  id              String              @id @default(uuid())
   customerId      String?
-  customer        Customer?        @relation(fields: [customerId], references: [id])
-  customerName    String           // Fallback/Legacy
+  customer        Customer?           @relation(fields: [customerId], references: [id])
+  customerName    String              // Fallback/Legacy
   customerAddress String?
   salesPersonId   String?
-  salesPerson     User?            @relation(fields: [salesPersonId], references: [id])
-  status          String           // DRAFT, CONFIRMED, PARTIALLY_DELIVERED, DELIVERED, CANCELLED
+  salesPerson     User?               @relation(fields: [salesPersonId], references: [id])
+  status          String              // DRAFT, NEGOTIATION, CONFIRMED, PARTIALLY_DELIVERED, DELIVERED, CANCELLED
   totalAmount     Float
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
   orderLines      SalesOrderLine[]
+  comments        SalesOrderComment[]
 }
 
 model SalesOrderLine {
@@ -94,8 +96,19 @@ model SalesOrderLine {
   quantity     Float
   deliveredQty Float      @default(0)
   price        Float
+  initialPrice Float      @default(0) // Original price before negotiation
   salesOrder   SalesOrder @relation(fields: [salesOrderId], references: [id])
   product      Product    @relation(fields: [productId], references: [id])
+}
+
+model SalesOrderComment {
+  id           String     @id @default(uuid())
+  salesOrderId String
+  userId       String
+  text         String
+  createdAt    DateTime   @default(now())
+  salesOrder   SalesOrder @relation(fields: [salesOrderId], references: [id])
+  user         User       @relation(fields: [userId], references: [id])
 }
 
 model PurchaseOrder {

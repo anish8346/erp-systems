@@ -17,6 +17,7 @@ export class SalesRepository {
             productId: line.productId,
             quantity: Number(line.quantity),
             price: Number(line.price),
+            initialPrice: Number(line.price),
           })),
         },
       },
@@ -29,7 +30,8 @@ export class SalesRepository {
       where: { id },
       include: { 
         orderLines: { include: { product: true } },
-        salesPerson: true
+        salesPerson: true,
+        comments: { include: { user: true }, orderBy: { createdAt: 'asc' } }
       },
     });
   }
@@ -131,7 +133,8 @@ export class SalesRepository {
         where,
         include: { 
           orderLines: { include: { product: true } },
-          salesPerson: true
+          salesPerson: true,
+          comments: true
         },
         skip,
         take: limit,
@@ -202,6 +205,27 @@ export class SalesRepository {
         where: { id: so.id },
         data: { status: allDelivered ? 'DELIVERED' : 'PARTIALLY_DELIVERED' },
       });
+    });
+  }
+
+  async addComment(data: { salesOrderId: string, userId: string, text: string }) {
+    return await prisma.salesOrderComment.create({
+      data,
+      include: { user: true }
+    });
+  }
+
+  async updateSalesOrderLine(id: string, data: { price?: number, quantity?: number }) {
+    return await prisma.salesOrderLine.update({
+      where: { id },
+      data
+    });
+  }
+
+  async updateSalesOrder(id: string, data: { status?: SalesOrderStatus, totalAmount?: number }) {
+    return await prisma.salesOrder.update({
+      where: { id },
+      data
     });
   }
 }

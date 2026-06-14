@@ -33,7 +33,7 @@ export const confirmSalesOrder = async (id: string, userId?: string) => {
   const so = await salesRepository.findSalesOrderById(id);
   
   if (!so) throw new Error('Sales Order not found.');
-  if (so.status !== 'DRAFT') throw new Error('Only DRAFT orders can be confirmed.');
+  if (so.status !== 'DRAFT' && so.status !== 'NEGOTIATION') throw new Error('Only DRAFT or NEGOTIATION orders can be confirmed.');
 
   for (const line of (so.orderLines || [])) {
     const product = line.product;
@@ -87,6 +87,69 @@ export const confirmSalesOrder = async (id: string, userId?: string) => {
   }
 
   return updatedSO;
+};
+
+export const startNegotiation = async (id: string, userId?: string) => {
+  const so = await salesRepository.findSalesOrderById(id);
+  if (!so) throw new Error('Sales Order not found.');
+  if (so.status !== 'DRAFT') throw new Error('Only DRAFT orders can be moved to negotiation.');
+
+  await salesRepository.updateSalesOrder(id, { status: 'NEGOTIATION' });
+
+  if (userId) {
+    await logActivity(userId, 'START_NEGOTIATION', 'SALES_ORDER', id, `Started negotiation for sales order ${id}`);
+  }
+
+  return await salesRepository.findSalesOrderById(id);
+};
+
+export const addNegotiationComment = async (id: string, text: string, userId: string) => {
+  const so = await salesRepository.findSalesOrderById(id);
+  if (!so) throw new Error('Sales Order not found.');
+
+  await salesRepository.addComment({ salesOrderId: id, userId, text });
+
+  await logActivity(userId, 'COMMENT', 'SALES_ORDER', id, `Added negotiation comment: ${text.substring(0, 50)}...`);
+
+  return await salesRepository.findSalesOrderById(id);
+};
+
+export const updateNegotiatedPrice = async (id: string, lineId: string, newPrice: number, userId: string) => {
+  const so = await salesRepository.findSalesOrderById(id);
+  if (!so) throw new Error('Sales Order not found.');
+  if (so.status !== 'NEGOTIATION' && so.status !== 'DRAFT') throw new Error('Can only update price in DRAFT or NEGOTIATION status.');
+
+  return await prisma.$transaction(async (tx) => {
+    const line = await tx.salesOrderLine.findUnique({ where: { id: lineId } });
+    if (!line || line.salesOrderId !== id) throw new Error('Order line not found.');
+
+    await tx.salesOrderLine.update({
+      where: { id: lineId },
+      data: { price: newPrice }
+    });
+
+    const allLines = await tx.salesOrderLine.findMany({
+      where: { salesOrderId: id }
+    });
+    
+    const totalAmount = allLines.reduce((acc, l) => acc + (l.quantity * l.price), 0);
+
+    await tx.salesOrder.update({
+      where: { id },
+      data: { totalAmount }
+    });
+
+    await logActivity(userId, 'UPDATE_PRICE', 'SALES_ORDER', id, `Updated sales price for a line item to ₹${newPrice}`);
+
+    return await tx.salesOrder.findUnique({
+      where: { id },
+      include: { 
+        orderLines: { include: { product: true } }, 
+        salesPerson: true,
+        comments: { include: { user: true }, orderBy: { createdAt: 'asc' } }
+      }
+    });
+  });
 };
 
 export const deliverSalesOrder = async (id: string, items: DeliverItem[], userId?: string) => {

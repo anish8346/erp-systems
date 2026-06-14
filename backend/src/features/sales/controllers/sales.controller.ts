@@ -38,6 +38,40 @@ export const confirmOrder = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const startNegotiation = async (req: AuthRequest, res: Response) => {
+  try {
+    const so = await salesService.startNegotiation(req.params.id, req.user?.id);
+    res.json(so);
+  } catch (error: unknown) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+};
+
+export const addComment = async (req: AuthRequest, res: Response) => {
+  try {
+    const id = req.params.id;
+    const { text } = req.body;
+    if (!req.user?.id) throw new Error('User not authenticated.');
+    const so = await salesService.addNegotiationComment(id, text, req.user.id);
+    res.status(201).json(so);
+  } catch (error: unknown) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+};
+
+export const updateLinePrice = async (req: AuthRequest, res: Response) => {
+  try {
+    const id = req.params.id;
+    const lineId = req.params.lineId;
+    const { price } = req.body;
+    if (!req.user?.id) throw new Error('User not authenticated.');
+    const so = await salesService.updateNegotiatedPrice(id, lineId, Number(price), req.user.id);
+    res.json(so);
+  } catch (error: unknown) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+};
+
 export const deliverOrder = async (req: AuthRequest, res: Response) => {
   try {
     const { items } = req.body;

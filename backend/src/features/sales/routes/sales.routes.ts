@@ -8,6 +8,9 @@ export const salesRouter = Router();
 salesRouter.post('/', authenticate, createSalesOrder);
 salesRouter.get('/', authenticate, getSalesOrders);
 salesRouter.post('/:id/confirm', authenticate, confirmOrder);
+salesRouter.post('/:id/negotiate', authenticate, startNegotiation);
+salesRouter.post('/:id/comment', authenticate, addComment);
+salesRouter.patch('/:id/line/:lineId', authenticate, updateLinePrice);
 salesRouter.post('/:id/deliver', authenticate, deliverOrder);
 salesRouter.post('/:id/cancel', authenticate, cancelOrder);
 

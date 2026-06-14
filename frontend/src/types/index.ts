@@ -42,7 +42,7 @@ export interface Product {
   vendor?: Vendor | null;
 }
 
-export type SalesOrderStatus = 'DRAFT' | 'CONFIRMED' | 'PARTIALLY_DELIVERED' | 'DELIVERED' | 'CANCELLED';
+export type SalesOrderStatus = 'DRAFT' | 'NEGOTIATION' | 'CONFIRMED' | 'PARTIALLY_DELIVERED' | 'DELIVERED' | 'CANCELLED';
 
 export interface SalesOrderLine {
   id: string;
@@ -51,7 +51,17 @@ export interface SalesOrderLine {
   quantity: number;
   deliveredQty: number;
   price: number;
+  initialPrice: number;
   product?: Product;
+}
+
+export interface SalesOrderComment {
+  id: string;
+  salesOrderId: string;
+  userId: string;
+  text: string;
+  createdAt: string;
+  user?: User;
 }
 
 export interface SalesOrder {
@@ -64,6 +74,7 @@ export interface SalesOrder {
   createdAt: string;
   updatedAt: string;
   orderLines: SalesOrderLine[];
+  comments?: SalesOrderComment[];
   salesPerson?: User | null;
 }
 

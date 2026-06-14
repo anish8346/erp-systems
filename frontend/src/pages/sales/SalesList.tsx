@@ -151,18 +151,27 @@ const SalesList = ({
                         <Badge variant={
                             o.status === 'DELIVERED' ? 'success' : 
                             o.status === 'PARTIALLY_DELIVERED' ? 'warning' : 
+                            o.status === 'NEGOTIATION' ? 'orange' :
                             o.status === 'CANCELLED' ? 'neutral' :
                             'purple'
                         }>
                         {o.status.replace('_', ' ')}
                         </Badge>
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-right flex justify-end gap-2">
+                        {(o.status === 'DRAFT' || o.status === 'NEGOTIATION') && (
+                           <button 
+                             onClick={(e) => { e.stopPropagation(); onOpenDetail(o); }}
+                             className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors inline-flex items-center gap-1 text-xs font-bold"
+                           >
+                             Bargain
+                           </button>
+                        )}
                         <button 
                         onClick={() => onOpenDetail(o)}
                         className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors inline-flex items-center gap-1 text-xs font-bold"
                         >
-                        View Order <ChevronRight className="w-4 h-4" />
+                        View <ChevronRight className="w-4 h-4" />
                         </button>
                     </td>
                     </tr>
