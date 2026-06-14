@@ -141,7 +141,23 @@ export class OperationsService {
   }
 
   static async updateWorkOrderStatus(id: string, status: WOStatus, userId?: string) {
-    const wo = await OperationsRepository.updateWorkOrder(id, { status });
+    const existingWO = await prisma.workOrder.findUnique({ where: { id } });
+    const updateData: any = { status };
+
+    if (status === 'IN_PROGRESS' && !existingWO?.startTime) {
+      updateData.startTime = new Date();
+    } else if (status === 'DONE') {
+      let realDuration = existingWO?.realDuration || 0;
+      if (existingWO?.startTime) {
+        const diffMs = new Date().getTime() - existingWO.startTime.getTime();
+        const diffMins = Math.round(diffMs / 60000);
+        realDuration = diffMins;
+      }
+      updateData.realDuration = realDuration;
+      updateData.startTime = null; // Clear after finishing
+    }
+
+    const wo = await OperationsRepository.updateWorkOrder(id, updateData);
 
     if (userId) {
       await logActivity(userId, 'UPDATE_STATUS', 'WORK_ORDER', id, `Updated ${wo.operation?.name || wo.operationName} to ${status}`);

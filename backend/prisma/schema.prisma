@@ -208,6 +208,7 @@ model WorkOrder {
   status           String             // PENDING, IN_PROGRESS, DONE
   expectedDuration Int                @default(0) // in minutes
   realDuration     Int                @default(0)
+  startTime        DateTime?          // Record when the step started
   mo               ManufacturingOrder @relation(fields: [moId], references: [id])
   operation        Operation?         @relation(fields: [operationId], references: [id])
   workCenter       WorkCenter?        @relation(fields: [workCenterId], references: [id])

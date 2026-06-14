@@ -37,4 +37,8 @@ export class FinanceService {
   static async getSummary(filters: any) {
     return await FinanceRepository.findRecords(filters);
   }
+
+  static async getChartData() {
+    return await FinanceRepository.getChartData();
+  }
 }

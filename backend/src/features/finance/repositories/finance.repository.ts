@@ -86,4 +86,37 @@ export class FinanceRepository {
       },
     };
   }
+
+  static async getChartData() {
+    // 1. Get last 30 days of data grouped by date
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const dailyData = await prisma.financeRecord.groupBy({
+      by: ['date', 'type'],
+      where: {
+        date: { gte: thirtyDaysAgo }
+      },
+      _sum: { amount: true }
+    });
+
+    // 2. Get data grouped by category for pie charts
+    const categoryData = await prisma.financeRecord.groupBy({
+      by: ['category', 'type'],
+      _sum: { amount: true }
+    });
+
+    return {
+      daily: dailyData.map(d => ({
+        date: d.date.toISOString().split('T')[0],
+        type: d.type,
+        amount: d._sum.amount || 0
+      })),
+      categories: categoryData.map(c => ({
+        category: c.category,
+        type: c.type,
+        amount: c._sum.amount || 0
+      }))
+    };
+  }
 }

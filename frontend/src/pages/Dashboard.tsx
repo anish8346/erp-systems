@@ -1,9 +1,29 @@
 
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
-import { ShoppingCart, Truck, Factory, AlertTriangle, Package, History } from 'lucide-react';
+import { ShoppingCart, Truck, Factory, AlertTriangle, Package, History, TrendingUp, TrendingDown, PieChart as PieIcon, BarChart3 } from 'lucide-react';
 import { Card, Badge, Button } from '../components/UI';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
 import type { SalesOrder, Product, ManufacturingOrder, StockLedger } from '../types';
+
+const COLORS = ['#8c7e6a', '#b08e48', '#10b981', '#ef4444', '#6366f1'];
+
+const processDailyData = (daily: any[]) => {
+  const map: Record<string, any> = {};
+  daily.forEach(d => {
+    if (!map[d.date]) map[d.date] = { date: d.date, Income: 0, Expense: 0 };
+    if (d.type === 'INCOME') map[d.date].Income += d.amount;
+    else map[d.date].Expense += d.amount;
+  });
+  return Object.values(map).sort((a: any, b: any) => a.date.localeCompare(b.date));
+};
+
+const processCategoryData = (categories: any[]) => {
+  return categories.map(c => ({
+    name: c.category,
+    value: c.amount
+  }));
+};
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -13,19 +33,21 @@ const Dashboard = () => {
     lowStock: 0,
     delayedOrders: 0,
   });
+  const [chartData, setChartData] = useState<{ daily: any[], categories: any[] }>({ daily: [], categories: [] });
   const [recentLogs, setRecentLogs] = useState<StockLedger[]>([]);
   const [loading, setLoading] = useState(true);
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchDashboardData = async () => {
       try {
-        const [salesRes, productsRes, mosRes, ledgerRes] = await Promise.all([
+        const [salesRes, productsRes, mosRes, ledgerRes, chartsRes] = await Promise.all([
           api.get('/sales'),
           api.get('/products'),
           api.get('/manufacturing'),
           api.get('/products/ledger'),
+          ['OWNER', 'ADMIN'].includes(user.role) ? api.get('/finance/charts') : Promise.resolve({ data: { daily: [], categories: [] } })
         ]);
 
         const salesData = Array.isArray(salesRes.data) ? salesRes.data : (salesRes.data?.orders || []);
@@ -49,13 +71,14 @@ const Dashboard = () => {
           delayedOrders: delayedOrdersCount,
         });
         setRecentLogs(ledgerData.slice(0, 5));
+        setChartData(chartsRes.data);
       } catch (err) {
         console.error("Dashboard data fetch failed", err);
       } finally {
         setLoading(false);
       }
     };
-    fetchStats();
+    fetchDashboardData();
   }, [user.role]);
 
   if (loading) {
@@ -67,11 +90,57 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-20">
       <div>
         <h2 className="text-3xl font-bold text-luxury-brown leading-none">Dashboard</h2>
         <p className="text-warm-taupe mt-2 text-sm font-semibold opacity-70">Real-time Operational Overview</p>
       </div>
+
+      {/* Financial Analytics (Owners/Admins) */}
+      {['OWNER', 'ADMIN'].includes(user.role) && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+           <Card className="lg:col-span-2 p-6" title="Cash Flow (Last 30 Days)" subtitle="Daily comparison of Income vs. Expenses">
+              <div className="h-[300px] mt-6">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={processDailyData(chartData.daily)}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                        <XAxis dataKey="date" fontSize={10} fontWeight="bold" tick={{fill: '#8c7e6a'}} />
+                        <YAxis fontSize={10} fontWeight="bold" tick={{fill: '#8c7e6a'}} tickFormatter={(v) => `₹${v/1000}k`} />
+                        <Tooltip 
+                            contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}}
+                            formatter={(value) => [`₹${Number(value).toLocaleString()}`, '']}
+                        />
+                        <Legend iconType="circle" />
+                        <Bar dataKey="Income" fill="#10b981" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="Expense" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                </ResponsiveContainer>
+              </div>
+           </Card>
+
+           <Card className="p-6" title="Spending by Category" subtitle="Revenue breakdown">
+              <div className="h-[300px] mt-6">
+                <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                        <Pie
+                            data={processCategoryData(chartData.categories)}
+                            innerRadius={60}
+                            outerRadius={80}
+                            paddingAngle={5}
+                            dataKey="value"
+                        >
+                            {processCategoryData(chartData.categories).map((entry: any, index: number) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend layout="vertical" align="right" verticalAlign="middle" iconType="circle" />
+                    </PieChart>
+                </ResponsiveContainer>
+              </div>
+           </Card>
+        </div>
+      )}
       
       {/* KPI Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

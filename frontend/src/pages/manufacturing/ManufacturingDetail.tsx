@@ -1,5 +1,5 @@
-import React from 'react';
-import { ArrowLeft, CheckCircle2, Factory, Package, ListTree, Timer, XCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, CheckCircle2, Factory, Package, ListTree, Timer, XCircle, Play, CheckCircle } from 'lucide-react';
 import { Button, Card, Badge } from '../../components/UI';
 import type { ManufacturingOrder, MOComponent, WorkOrder } from '../../types';
 
@@ -24,6 +24,29 @@ const ManufacturingDetail = ({
   updateWOStatus,
   updateWODuration
 }: ManufacturingDetailProps) => {
+  const [elapsedTimes, setElapsedTimes] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const newElapsed: Record<string, number> = {};
+      currentMO.WorkOrders?.forEach(wo => {
+        if (wo.status === 'IN_PROGRESS' && wo.startTime) {
+          const diffMs = new Date().getTime() - new Date(wo.startTime).getTime();
+          newElapsed[wo.id] = Math.floor(diffMs / 1000); // Seconds
+        }
+      });
+      setElapsedTimes(newElapsed);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [currentMO.WorkOrders]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs}s`;
+  };
+
   const isReadOnly = currentMO.status === 'DONE' || currentMO.status === 'CANCELLED';
   const isDraft = currentMO.status === 'DRAFT';
   const isConfirmed = currentMO.status === 'CONFIRMED' || currentMO.status === 'IN_PROGRESS';
@@ -172,24 +195,27 @@ const ManufacturingDetail = ({
                      </div>
                      <div>
                         <label className="text-[9px] font-bold text-warm-taupe uppercase block">Real Duration</label>
-                        {isConfirmed ? (
-                          <input 
-                            type="number"
-                            className="w-20 px-2 py-0.5 border rounded text-xs font-bold"
-                            defaultValue={wo.realDuration}
-                            onBlur={(e) => updateWODuration(wo.id, Number(e.target.value))}
-                            disabled={isReadOnly}
-                          />
+                        {wo.status === 'DONE' ? (
+                            <span className="text-sm font-black text-emerald-600">{wo.realDuration} mins</span>
+                        ) : wo.status === 'IN_PROGRESS' ? (
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                                <span className="text-sm font-black text-blue-600">{formatTime(elapsedTimes[wo.id] || 0)}</span>
+                            </div>
                         ) : (
-                          <span className="text-sm text-gray-400">---</span>
+                            <span className="text-sm text-gray-400 font-bold italic">Not started</span>
                         )}
                      </div>
                      <div className="md:col-span-2 flex justify-end gap-2">
                         {wo.status === 'PENDING' && !isReadOnly && (
-                          <Button size="sm" variant="secondary" onClick={() => updateWOStatus(wo.id, 'IN_PROGRESS')}>Start Step</Button>
+                          <Button size="sm" variant="secondary" onClick={() => updateWOStatus(wo.id, 'IN_PROGRESS')} className="gap-2">
+                            <Play className="w-3.5 h-3.5" /> Start Task
+                          </Button>
                         )}
                         {wo.status === 'IN_PROGRESS' && (
-                          <Button size="sm" onClick={() => updateWOStatus(wo.id, 'DONE')}>Finish Step</Button>
+                          <Button size="sm" onClick={() => updateWOStatus(wo.id, 'DONE')} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
+                            <CheckCircle className="w-3.5 h-3.5" /> Mark Finished
+                          </Button>
                         )}
                      </div>
                   </div>

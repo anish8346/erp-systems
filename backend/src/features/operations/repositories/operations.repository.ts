@@ -78,7 +78,7 @@ export class OperationsRepository {
     });
   }
 
-  static async updateWorkOrder(id: string, data: { status?: WOStatus, realDuration?: number }) {
+  static async updateWorkOrder(id: string, data: { status?: WOStatus, realDuration?: number, startTime?: Date | null }) {
     return await prisma.workOrder.update({
       where: { id },
       data,

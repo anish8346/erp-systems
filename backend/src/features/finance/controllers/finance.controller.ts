@@ -34,4 +34,13 @@ export class FinanceController {
       res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
     }
   }
+
+  static async getCharts(req: AuthRequest, res: Response) {
+    try {
+      const data = await FinanceService.getChartData();
+      res.json(data);
+    } catch (error: unknown) {
+      res.status(500).json({ error: 'Failed to fetch chart data.' });
+    }
+  }
 }
